@@ -20,7 +20,7 @@ export default async function CheckoutPage() {
   if (!cart || cart.lines.length === 0) {
     return (
       <div className="container max-w-xl py-16 text-center">
-        <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-brand-violet/10 text-brand-violet">
+        <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-[#FDC841]/20 text-[#855000]">
           <ShoppingBag className="h-10 w-10" />
         </div>
         <h1 className="mt-6 text-3xl font-black text-ink">Your cart is empty</h1>

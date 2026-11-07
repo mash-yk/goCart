@@ -16,7 +16,7 @@ function CountBadge({ count }: { count: number }) {
   return (
     <span
       key={count}
-      className="absolute -right-1 -top-1 grid h-5 min-w-5 animate-pop place-items-center rounded-full bg-brand-gradient px-1 text-[10px] font-bold text-white ring-2 ring-white"
+      className="absolute -right-1 -top-1 grid h-5 min-w-5 animate-pop place-items-center rounded-full bg-[#FDC841] px-1 text-[10px] font-extrabold text-[#181715] ring-2 ring-white shadow-sm"
     >
       {count > 99 ? "99+" : count}
     </span>
@@ -57,7 +57,7 @@ export function HeaderClient({ categories }: { categories: Category[] }) {
       <header
         className={cn(
           "sticky top-0 z-40 transition-all duration-300",
-          scrolled ? "glass shadow-[0_8px_30px_-12px_rgba(20,11,46,0.18)]" : "bg-[#fbf9ff]/80 backdrop-blur",
+          scrolled ? "glass shadow-[0_4px_24px_-4px_rgba(24,23,21,0.06)]" : "bg-[#FBF9F4]/80 backdrop-blur-md",
         )}
       >
         <div className="container flex h-16 items-center gap-3 lg:h-[72px] lg:gap-6">
@@ -67,12 +67,14 @@ export function HeaderClient({ categories }: { categories: Category[] }) {
 
           <Logo />
 
-          <nav className="hidden items-center gap-1 lg:flex" aria-label="Main">
+          <nav className="hidden items-center gap-1.5 lg:flex" aria-label="Main">
             <Link
               href="/products"
               className={cn(
-                "rounded-full px-3.5 py-2 text-sm font-semibold transition hover:bg-ink-100",
-                pathname === "/products" && "bg-ink text-white hover:bg-ink",
+                "rounded-full px-4 py-2 text-sm font-semibold transition",
+                pathname === "/products"
+                  ? "bg-[#1E1E1E] text-white shadow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink",
               )}
             >
               Shop all
@@ -82,8 +84,10 @@ export function HeaderClient({ categories }: { categories: Category[] }) {
                 key={c.slug}
                 href={`/categories/${c.slug}`}
                 className={cn(
-                  "rounded-full px-3.5 py-2 text-sm font-semibold text-ink-600 transition hover:bg-ink-100 hover:text-ink",
-                  pathname === `/categories/${c.slug}` && "bg-ink-100 text-ink",
+                  "rounded-full px-4 py-2 text-sm font-semibold transition",
+                  pathname === `/categories/${c.slug}`
+                    ? "bg-[#1E1E1E] text-white shadow-sm"
+                    : "text-ink-600 hover:bg-ink-100 hover:text-ink",
                 )}
               >
                 {c.name}
@@ -93,8 +97,10 @@ export function HeaderClient({ categories }: { categories: Category[] }) {
               <Link
                 href="/admin/products"
                 className={cn(
-                  "rounded-full px-3.5 py-2 text-sm font-semibold transition text-brand-violet hover:bg-violet-50",
-                  pathname.startsWith("/admin") && "bg-brand-violet text-white hover:bg-brand-violet hover:text-white",
+                  "rounded-full px-4 py-2 text-sm font-semibold transition",
+                  pathname.startsWith("/admin")
+                    ? "bg-[#1E1E1E] text-white shadow-sm"
+                    : "text-[#855000] bg-[#FDC841]/20 hover:bg-[#FDC841]/35",
                 )}
               >
                 Admin
@@ -122,7 +128,7 @@ export function HeaderClient({ categories }: { categories: Category[] }) {
             </Link>
             <Link
               href="/account"
-              className={cn(iconBtn, user && "bg-brand-gradient text-white hover:bg-none hover:text-white")}
+              className={cn(iconBtn, user && "bg-[#1E1E1E] text-white shadow-sm hover:bg-[#2C2A26]")}
               aria-label={user ? `Account for ${user.name}` : "Sign in"}
             >
               {user ? (

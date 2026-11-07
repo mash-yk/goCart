@@ -239,7 +239,7 @@ export function AdminProductsView({
                   const isLow = product.stock > 0 && product.stock < 10;
 
                   return (
-                    <tr key={product.slug} className="hover:bg-violet-50/30 transition">
+                    <tr key={product.slug} className="hover:bg-[#FEF9EC]/60 transition">
                       {/* Product Name & Art */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
@@ -309,7 +309,7 @@ export function AdminProductsView({
                           </Link>
                           <button
                             onClick={() => handleOpenEdit(product)}
-                            className="grid h-8 w-8 place-items-center rounded-lg text-ink-600 hover:bg-violet-100 hover:text-brand-violet transition"
+                            className="grid h-8 w-8 place-items-center rounded-lg text-ink-600 hover:bg-[#FEF9EC] hover:text-[#855000] transition"
                             title="Edit product"
                           >
                             <Pencil className="h-4 w-4" />

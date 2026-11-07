@@ -69,8 +69,8 @@ export function ProductFormModal({
 
   // Visual Art
   const [artIcon, setArtIcon] = useState<ArtIcon>(product?.art.icon ?? "headphones");
-  const [artFrom, setArtFrom] = useState(product?.art.from ?? "#7c3aed");
-  const [artTo, setArtTo] = useState(product?.art.to ?? "#ec4899");
+  const [artFrom, setArtFrom] = useState(product?.art.from ?? "#FDC841");
+  const [artTo, setArtTo] = useState(product?.art.to ?? "#D97706");
 
   // Tags & Features & Specs
   const [tagsStr, setTagsStr] = useState(product?.tags.join(", ") ?? "premium, wireless");
@@ -382,7 +382,7 @@ export function ProductFormModal({
                           onClick={() => setArtIcon(ic)}
                           className={`rounded-lg px-2 py-1 text-xs font-semibold transition ${
                             artIcon === ic
-                              ? "bg-brand-violet text-white shadow-sm"
+                              ? "bg-[#1E1E1E] text-white shadow-sm"
                               : "bg-white text-ink-600 hover:bg-ink-100"
                           }`}
                         >

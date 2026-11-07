@@ -12,11 +12,11 @@ const messages = [
 export function AnnouncementBar() {
   const items = [...messages, ...messages];
   return (
-    <div className="overflow-hidden bg-ink py-2 text-white">
+    <div className="overflow-hidden bg-[#1E1E1E] py-2 text-[#FAF8F3] border-b border-black/10">
       <div className="flex w-max animate-marquee gap-10 hover:[animation-play-state:paused]">
         {items.map(({ icon: Icon, text }, i) => (
-          <span key={i} className="flex items-center gap-2 whitespace-nowrap text-xs font-medium" aria-hidden={i >= messages.length}>
-            <Icon className="h-3.5 w-3.5 text-brand-lime" aria-hidden />
+          <span key={i} className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold tracking-wide" aria-hidden={i >= messages.length}>
+            <Icon className="h-3.5 w-3.5 text-[#FDC841]" aria-hidden />
             {text}
           </span>
         ))}

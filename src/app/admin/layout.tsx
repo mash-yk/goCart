@@ -16,7 +16,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!user) {
     return (
       <div className="container max-w-md py-20 text-center">
-        <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-violet-100 text-brand-violet">
+        <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#FEF3D6] text-[#855000]">
           <Lock className="h-8 w-8" />
         </div>
         <h1 className="mt-4 text-2xl font-black text-ink">Admin Sign-in Required</h1>
@@ -68,14 +68,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="flex items-center gap-1.5 text-xs font-semibold text-ink-500 hover:text-brand-violet transition"
+              className="flex items-center gap-1.5 text-xs font-semibold text-ink-500 hover:text-ink transition"
             >
               <ArrowLeft className="h-3.5 w-3.5" /> Back to Storefront
             </Link>
             <span className="text-ink-200">|</span>
             <div className="flex items-center gap-1.5">
               <Badge tone="dark">
-                <ShieldCheck className="h-3 w-3 mr-0.5 text-brand-violet" /> Admin Console
+                <ShieldCheck className="h-3 w-3 mr-0.5 text-[#FDC841]" /> Admin Console
               </Badge>
             </div>
           </div>

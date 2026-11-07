@@ -118,7 +118,7 @@ export function SearchBox({ className, autoFocus, onNavigate }: { className?: st
           aria-expanded={showDropdown}
           aria-controls={listId}
           aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
-          className="h-11 w-full rounded-full border border-ink-200 bg-white/80 pl-11 pr-10 text-sm placeholder:text-ink-300 transition focus:border-brand-violet focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-violet/15 [&::-webkit-search-cancel-button]:hidden"
+          className="h-11 w-full rounded-full border border-[#E5DED0] bg-white/90 pl-11 pr-10 text-sm placeholder:text-ink-400 transition focus:border-[#F5B82E] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#FDC841]/25 [&::-webkit-search-cancel-button]:hidden"
         />
         {loading ? (
           <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-ink-400" aria-hidden />
@@ -135,7 +135,7 @@ export function SearchBox({ className, autoFocus, onNavigate }: { className?: st
       </form>
 
       {showDropdown && (
-        <div className="absolute inset-x-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-3xl border border-ink-100 bg-white p-2 shadow-card-hover">
+        <div className="absolute inset-x-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-3xl border border-[#EDE7D9] bg-white/95 p-2 shadow-card-hover backdrop-blur-md">
           {suggestions.length > 0 ? (
             <ul id={listId} role="listbox" aria-label="Search suggestions">
               {suggestions.map((s, i) => (

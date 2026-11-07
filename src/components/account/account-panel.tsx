@@ -102,13 +102,13 @@ export function AccountPanel({ user: initial, cartCount, wishlistCount }: { user
           Member since {new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
         </p>
         <div className="mt-6 grid grid-cols-2 gap-3">
-          <Link href="/cart" className="rounded-2xl bg-ink-50 p-4 transition hover:bg-violet-50">
-            <ShoppingBag className="mx-auto h-5 w-5 text-brand-violet" />
+          <Link href="/cart" className="rounded-2xl bg-ink-50 p-4 transition hover:bg-[#FEF9EC]">
+            <ShoppingBag className="mx-auto h-5 w-5 text-ink-700" />
             <p className="mt-1 text-2xl font-black">{cartCount}</p>
             <p className="text-xs text-ink-500">In cart</p>
           </Link>
-          <Link href="/wishlist" className="rounded-2xl bg-ink-50 p-4 transition hover:bg-fuchsia-50">
-            <Heart className="mx-auto h-5 w-5 text-fuchsia-500" />
+          <Link href="/wishlist" className="rounded-2xl bg-ink-50 p-4 transition hover:bg-[#FEF9EC]">
+            <Heart className="mx-auto h-5 w-5 text-[#D97706]" />
             <p className="mt-1 text-2xl font-black">{wishlistCount}</p>
             <p className="text-xs text-ink-500">Saved</p>
           </Link>
@@ -120,10 +120,10 @@ export function AccountPanel({ user: initial, cartCount, wishlistCount }: { user
 
       <div className="space-y-6">
         {user.role === "admin" && (
-          <section className="card p-6 border-brand-violet/30 bg-violet-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <section className="card p-6 border-[#FDC841]/40 bg-[#FEF9EC] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-ink text-white shadow-sm">
-                <ShieldCheck className="h-6 w-6 text-brand-violet" />
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#1E1E1E] text-white shadow-sm">
+                <ShieldCheck className="h-6 w-6 text-[#FDC841]" />
               </div>
               <div>
                 <h3 className="font-extrabold text-ink">Administrator Dashboard</h3>

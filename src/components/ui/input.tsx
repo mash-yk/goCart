@@ -33,9 +33,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           aria-invalid={Boolean(error) || undefined}
           aria-describedby={describedBy}
           className={cn(
-            "h-12 w-full rounded-2xl border bg-white px-4 text-sm text-ink placeholder:text-ink-300 transition focus:border-brand-violet focus:outline-none focus:ring-4 focus:ring-brand-violet/15",
+            "h-12 w-full rounded-2xl border bg-white px-4 text-sm text-ink placeholder:text-ink-400 transition focus:border-[#F5B82E] focus:outline-none focus:ring-4 focus:ring-[#FDC841]/25",
             icon && "pl-11",
-            error ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-ink-200",
+            error ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-[#E5DED0]",
             className,
           )}
           {...props}

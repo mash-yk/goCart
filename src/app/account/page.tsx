@@ -47,7 +47,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
               { icon: Sparkles, text: "Early access to new drops and deals" },
             ].map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3 font-medium">
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-brand-violet shadow-card">
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-[#855000] border border-[#EDE7D9] shadow-sm">
                   <Icon className="h-5 w-5" />
                 </span>
                 {text}

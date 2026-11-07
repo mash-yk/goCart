@@ -36,13 +36,13 @@ export function HeroVisual({ products }: { products: Product[] }) {
       onPointerLeave={() => setTilt({ x: 0, y: 0 })}
       className="relative mx-auto aspect-square w-full max-w-[520px]"
     >
-      <div className="absolute inset-[8%] animate-blob rounded-full bg-brand-violet/40 blur-3xl" aria-hidden />
-      <div className="absolute inset-[20%] animate-blob rounded-full bg-brand-orange/40 blur-3xl [animation-delay:-5s]" aria-hidden />
+      <div className="absolute inset-[8%] animate-blob rounded-full bg-[#FDC841]/22 blur-3xl" aria-hidden />
+      <div className="absolute inset-[20%] animate-blob rounded-full bg-[#F5B82E]/16 blur-3xl [animation-delay:-5s]" aria-hidden />
 
       <div className="absolute left-[20%] top-[12%] w-[58%]" style={layer(-14)}>
         <Link
           href={`/products/${main.slug}`}
-          className="block animate-float overflow-hidden rounded-[2rem] border-4 border-white bg-white shadow-card-hover"
+          className="block animate-float overflow-hidden rounded-[2rem] border-2 border-white/80 bg-white shadow-card-hover"
           style={{ transform: `perspective(900px) rotateY(${tilt.x * 8}deg) rotateX(${-tilt.y * 8}deg)` }}
         >
           <ProductArt art={main.art} name={main.name} priority sizes="(min-width:1024px) 320px, 60vw" />
@@ -50,10 +50,10 @@ export function HeroVisual({ products }: { products: Product[] }) {
             <div className="min-w-0">
               <p className="truncate text-sm font-bold">{main.name}</p>
               <p className="flex items-center gap-1 text-xs text-ink-400">
-                <Star className="h-3 w-3 fill-amber-400 text-amber-400" /> {main.rating}<span className="hidden sm:inline"> · {main.reviewCount.toLocaleString()} reviews</span>
+                <Star className="h-3 w-3 fill-[#FDC841] text-[#FDC841]" /> {main.rating}<span className="hidden sm:inline"> · {main.reviewCount.toLocaleString()} reviews</span>
               </p>
             </div>
-            <span className="shrink-0 rounded-full bg-ink px-3 py-1.5 text-sm font-bold text-white">{formatPrice(main.price)}</span>
+            <span className="shrink-0 rounded-full bg-[#1E1E1E] px-3.5 py-1.5 text-sm font-bold text-white shadow-sm">{formatPrice(main.price)}</span>
           </div>
         </Link>
       </div>

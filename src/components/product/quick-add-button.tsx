@@ -32,8 +32,8 @@ export function QuickAddButton({
       }}
       aria-label={disabled ? `${productName} is out of stock` : `Add ${productName} to cart`}
       className={cn(
-        "grid h-10 w-10 shrink-0 place-items-center rounded-full text-white transition-all duration-300 active:scale-90 disabled:cursor-not-allowed disabled:bg-ink-200",
-        state === "done" ? "bg-emerald-500" : "bg-ink hover:bg-brand-gradient hover:shadow-glow",
+        "grid h-10 w-10 shrink-0 place-items-center rounded-full transition-all duration-300 active:scale-90 disabled:cursor-not-allowed disabled:bg-ink-200 shadow-sm",
+        state === "done" ? "bg-emerald-500 text-white" : "bg-[#1E1E1E] text-white hover:bg-[#FDC841] hover:text-[#181715] hover:shadow-glow",
       )}
     >
       {state === "loading" ? (

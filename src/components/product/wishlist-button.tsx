@@ -36,14 +36,14 @@ export function WishlistButton({
       className={cn(
         "grid place-items-center rounded-full transition-all active:scale-90",
         variant === "floating" && "h-10 w-10 bg-white/85 shadow-card backdrop-blur hover:bg-white",
-        variant === "outline" && "h-14 w-14 border border-ink-200 bg-white hover:border-fuchsia-400",
+        variant === "outline" && "h-14 w-14 border border-ink-200 bg-white hover:border-[#FDC841]",
         className,
       )}
     >
       <Heart
         className={cn(
           "h-5 w-5 transition-colors",
-          saved ? "animate-pop fill-fuchsia-500 text-fuchsia-500" : "text-ink-500",
+          saved ? "animate-pop fill-[#FDC841] text-[#D97706]" : "text-ink-400 hover:text-ink",
         )}
       />
     </button>

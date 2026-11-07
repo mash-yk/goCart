@@ -21,7 +21,7 @@ export function Price({
           size === "sm" && "text-base",
           size === "md" && "text-lg",
           size === "lg" && "text-3xl sm:text-4xl",
-          onSale && "text-fuchsia-600",
+          onSale && "text-[#D97706]",
         )}
       >
         {formatPrice(price)}

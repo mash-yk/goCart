@@ -197,7 +197,7 @@ export function CartView({ initialCart }: { initialCart: Cart }) {
                 <dd className="font-semibold">{formatPrice(cart.subtotal)}</dd>
               </div>
               {cart.savings > 0 && (
-                <div className="flex justify-between text-fuchsia-700">
+                <div className="flex justify-between text-[#D97706]">
                   <dt>You save</dt>
                   <dd className="font-semibold">−{formatPrice(cart.savings)}</dd>
                 </div>
@@ -217,11 +217,11 @@ export function CartView({ initialCart }: { initialCart: Cart }) {
             </dl>
             <Link
               href="/checkout"
-              className={cn(buttonClasses("primary", "lg", "mt-6 w-full"), cart.total === 0 && "pointer-events-none opacity-50")}
+              className={cn(buttonClasses("primary", "lg", "mt-6 w-full shadow-glow"), cart.total === 0 && "pointer-events-none opacity-50")}
             >
               <Lock className="h-4 w-4" /> Proceed to Checkout
             </Link>
-            <Link href="/products" className="mt-3 block text-center text-sm font-semibold text-ink-500 hover:text-brand-violet">
+            <Link href="/products" className="mt-3 block text-center text-sm font-semibold text-ink-500 hover:text-ink">
               Continue shopping
             </Link>
           </div>

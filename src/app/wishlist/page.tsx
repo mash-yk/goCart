@@ -30,8 +30,8 @@ export default async function WishlistPage() {
           </p>
         </div>
         {!user && items.length > 0 && (
-          <p className="rounded-2xl bg-violet-50 px-4 py-3 text-sm text-ink-600">
-            <Link href="/account?next=/wishlist" className="font-semibold text-brand-violet hover:underline">
+          <p className="rounded-2xl bg-[#FEF9EC] px-4 py-3 text-sm text-[#855000] border border-[#FDE1A3]">
+            <Link href="/account?next=/wishlist" className="font-bold text-[#855000] hover:underline">
               Sign in
             </Link>{" "}
             to keep your wishlist across devices.
@@ -53,13 +53,13 @@ export default async function WishlistPage() {
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
           {items.map(({ product }) => (
-            <li key={product.slug} className="group relative flex flex-col rounded-[1.75rem] border border-ink-100 bg-white p-2.5 shadow-card transition hover:shadow-card-hover sm:p-3">
-              <div className="overflow-hidden rounded-[1.35rem]">
+            <li key={product.slug} className="group relative flex flex-col rounded-[2rem] border border-[#EDE7D9] bg-white p-2.5 shadow-card transition hover:shadow-card-hover sm:p-3">
+              <div className="overflow-hidden rounded-[1.5rem]">
                 <ProductArt art={product.art} name={product.name} image={product.images[0]} className="transition-transform duration-700 group-hover:scale-105" />
               </div>
               <div className="flex flex-1 flex-col px-1.5 pt-3 sm:px-2">
                 <h2 className="line-clamp-2 text-sm font-bold sm:text-base">
-                  <Link href={`/products/${product.slug}`} className="after:absolute after:inset-0 hover:text-brand-violet">
+                  <Link href={`/products/${product.slug}`} className="after:absolute after:inset-0 hover:text-[#855000]">
                     {product.name}
                   </Link>
                 </h2>

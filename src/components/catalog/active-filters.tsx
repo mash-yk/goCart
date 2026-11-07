@@ -34,7 +34,7 @@ export function ActiveFilters({ categories }: { categories: Category[] }) {
           key={c.key}
           type="button"
           onClick={() => update(c.clear)}
-          className="group inline-flex items-center gap-1.5 rounded-full bg-violet-50 py-1.5 pl-3 pr-2 text-xs font-semibold text-brand-violet ring-1 ring-violet-200 transition hover:bg-violet-100"
+          className="group inline-flex items-center gap-1.5 rounded-full bg-[#FEF3D6] py-1.5 pl-3 pr-2 text-xs font-semibold text-[#855000] ring-1 ring-[#FDE1A3] transition hover:bg-[#FDE1A3]"
           aria-label={`Remove filter ${c.label}`}
         >
           {c.label}

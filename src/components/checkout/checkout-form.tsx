@@ -147,7 +147,7 @@ export function CheckoutForm({ cart }: { cart: Cart }) {
           {/* Contact Details */}
           <section className="card p-6 sm:p-8">
             <div className="flex items-center gap-3 border-b border-ink-100 pb-4">
-              <div className="grid h-8 w-8 place-items-center rounded-full bg-brand-violet/10 text-brand-violet font-bold text-sm">
+              <div className="grid h-8 w-8 place-items-center rounded-full bg-[#FDC841]/25 text-[#855000] font-black text-sm">
                 1
               </div>
               <div>
@@ -192,7 +192,7 @@ export function CheckoutForm({ cart }: { cart: Cart }) {
           {/* Shipping Address */}
           <section className="card p-6 sm:p-8">
             <div className="flex items-center gap-3 border-b border-ink-100 pb-4">
-              <div className="grid h-8 w-8 place-items-center rounded-full bg-brand-violet/10 text-brand-violet font-bold text-sm">
+              <div className="grid h-8 w-8 place-items-center rounded-full bg-[#FDC841]/25 text-[#855000] font-black text-sm">
                 2
               </div>
               <div>
@@ -248,7 +248,7 @@ export function CheckoutForm({ cart }: { cart: Cart }) {
           {/* Payment Method */}
           <section className="card p-6 sm:p-8">
             <div className="flex items-center gap-3 border-b border-ink-100 pb-4">
-              <div className="grid h-8 w-8 place-items-center rounded-full bg-brand-violet/10 text-brand-violet font-bold text-sm">
+              <div className="grid h-8 w-8 place-items-center rounded-full bg-[#FDC841]/25 text-[#855000] font-black text-sm">
                 3
               </div>
               <div>
@@ -264,13 +264,13 @@ export function CheckoutForm({ cart }: { cart: Cart }) {
                 className={cn(
                   "cursor-pointer rounded-2xl border-2 p-5 transition-all",
                   form.paymentMethod === "stripe"
-                    ? "border-brand-violet bg-violet-50/60 shadow-sm ring-2 ring-brand-violet/20"
+                    ? "border-[#FDC841] bg-[#FEF9EC] shadow-sm ring-2 ring-[#FDC841]/30"
                     : "border-ink-200 bg-white hover:border-ink-300",
                 )}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-violet-600 text-white">
+                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#1E1E1E] text-[#FDC841]">
                       <CreditCard className="h-5 w-5" />
                     </div>
                     <div>
@@ -282,7 +282,7 @@ export function CheckoutForm({ cart }: { cart: Cart }) {
                     className={cn(
                       "grid h-5 w-5 place-items-center rounded-full border-2",
                       form.paymentMethod === "stripe"
-                        ? "border-brand-violet bg-brand-violet text-white"
+                        ? "border-[#FDC841] bg-[#FDC841] text-[#181715]"
                         : "border-ink-300",
                     )}
                   >

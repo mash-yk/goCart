@@ -17,31 +17,31 @@ export function ProductCard({ product, priority, className }: { product: Product
   return (
     <article
       className={cn(
-        "group relative flex flex-col rounded-[1.75rem] border border-ink-100 bg-white p-2.5 shadow-card transition-all duration-500 hover:-translate-y-1.5 hover:shadow-card-hover sm:p-3",
+        "group relative flex flex-col rounded-[2rem] border border-[#EDE7D9] bg-white p-3 shadow-card transition-all duration-500 hover:-translate-y-1.5 hover:shadow-card-hover",
         className,
       )}
     >
-      <Link href={`/products/${product.slug}`} className="relative block overflow-hidden rounded-[1.35rem]" tabIndex={-1} aria-hidden>
+      <Link href={`/products/${product.slug}`} className="relative block overflow-hidden rounded-[1.5rem]" tabIndex={-1} aria-hidden>
         <ProductArt
           art={product.art}
           name={product.name}
           image={product.images[0]}
           priority={priority}
-          className={cn("transition-transform duration-700 group-hover:scale-[1.06]", outOfStock && "grayscale-[60%]")}
+          className={cn("transition-transform duration-700 group-hover:scale-[1.05]", outOfStock && "grayscale-[60%]")}
         />
         <div className="absolute left-2.5 top-2.5 flex flex-col gap-1.5">
-          {discount > 0 && <Badge tone="lime">-{discount}%</Badge>}
+          {discount > 0 && <Badge tone="orange">-{discount}%</Badge>}
           {product.featured && discount === 0 && <Badge tone="dark">Bestseller</Badge>}
-          {outOfStock && <Badge tone="neutral" className="bg-white/90">Sold out</Badge>}
-          {lowStock && <Badge tone="warning" className="bg-amber-100/95">Only {product.stock} left</Badge>}
+          {outOfStock && <Badge tone="neutral" className="bg-white/95">Sold out</Badge>}
+          {lowStock && <Badge tone="warning">Only {product.stock} left</Badge>}
         </div>
       </Link>
-      <WishlistButton productSlug={product.slug} productName={product.name} className="absolute right-5 top-5 z-10 sm:right-6 sm:top-6" />
+      <WishlistButton productSlug={product.slug} productName={product.name} className="absolute right-5 top-5 z-10" />
 
-      <div className="flex flex-1 flex-col px-1.5 pb-1 pt-3 sm:px-2">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-ink-400">{product.categorySlug.replace("-", " ")}</p>
-        <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-snug sm:text-base">
-          <Link href={`/products/${product.slug}`} className="after:absolute after:inset-0 after:rounded-[1.75rem] hover:text-brand-violet">
+      <div className="flex flex-1 flex-col px-1.5 pb-1 pt-3.5">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-ink-400">{product.categorySlug.replace("-", " ")}</p>
+        <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-snug sm:text-base text-ink">
+          <Link href={`/products/${product.slug}`} className="after:absolute after:inset-0 after:rounded-[2rem] hover:text-[#855000]">
             {product.name}
           </Link>
         </h3>
@@ -59,7 +59,7 @@ export function ProductCard({ product, priority, className }: { product: Product
 
 export function ProductGrid({ products, priorityCount = 0 }: { products: Product[]; priorityCount?: number }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
       {products.map((p, i) => (
         <ProductCard key={p.slug} product={p} priority={i < priorityCount} />
       ))}

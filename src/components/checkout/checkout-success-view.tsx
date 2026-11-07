@@ -84,7 +84,7 @@ export function CheckoutSuccessView({
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="card p-6">
           <div className="flex items-center gap-2.5 font-bold text-ink">
-            <Package className="h-5 w-5 text-brand-violet" />
+            <Package className="h-5 w-5 text-[#855000]" />
             <h3>Delivery Details</h3>
           </div>
           <div className="mt-4 space-y-2.5 text-xs text-ink-600">
@@ -113,7 +113,7 @@ export function CheckoutSuccessView({
 
         <div className="card p-6">
           <div className="flex items-center gap-2.5 font-bold text-ink">
-            {isCod ? <DollarSign className="h-5 w-5 text-emerald-600" /> : <CreditCard className="h-5 w-5 text-brand-violet" />}
+            {isCod ? <DollarSign className="h-5 w-5 text-emerald-600" /> : <CreditCard className="h-5 w-5 text-[#855000]" />}
             <h3>Payment Method</h3>
           </div>
           <div className="mt-4 space-y-3 text-xs text-ink-600">
@@ -125,9 +125,9 @@ export function CheckoutSuccessView({
                 </p>
               </div>
             ) : (
-              <div className="rounded-xl bg-violet-50/70 p-3.5 border border-violet-100">
-                <p className="font-bold text-violet-900">Card Payment (Stripe)</p>
-                <p className="mt-1 text-violet-800">
+              <div className="rounded-xl bg-[#FEF9EC] p-3.5 border border-[#FDE1A3]">
+                <p className="font-bold text-[#855000]">Card Payment (Stripe)</p>
+                <p className="mt-1 text-[#855000]">
                   Payment has been processed securely. A payment receipt has been dispatched to {order.customer.email}.
                 </p>
               </div>
@@ -176,7 +176,7 @@ export function CheckoutSuccessView({
               <dd className="font-semibold text-ink">{formatPrice(order.subtotal)}</dd>
             </div>
             {order.savings > 0 && (
-              <div className="flex justify-between text-fuchsia-700">
+              <div className="flex justify-between text-[#D97706]">
                 <dt>Discount Savings</dt>
                 <dd className="font-semibold">−{formatPrice(order.savings)}</dd>
               </div>

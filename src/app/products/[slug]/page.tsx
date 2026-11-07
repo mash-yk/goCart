@@ -104,7 +104,7 @@ export default async function ProductPage({ params }: Props) {
           <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
             <Price price={product.price} compareAtPrice={product.compareAtPrice} size="lg" />
             {product.compareAtPrice && product.compareAtPrice > product.price && (
-              <span className="rounded-full bg-fuchsia-50 px-3 py-1 text-sm font-bold text-fuchsia-700">
+              <span className="rounded-full bg-[#FEF3D6] px-3.5 py-1 text-sm font-bold text-[#855000] border border-[#FDE1A3]">
                 You save {formatPrice(product.compareAtPrice - product.price)}
               </span>
             )}
@@ -119,7 +119,7 @@ export default async function ProductPage({ params }: Props) {
             <BuyBox product={product} />
           </div>
 
-          <ul className="mt-8 grid gap-3 rounded-3xl bg-ink-50 p-5 text-sm sm:grid-cols-2">
+          <ul className="mt-8 grid gap-3 rounded-3xl bg-ink-50 p-5 text-sm sm:grid-cols-2 border border-ink-100">
             {[
               { icon: Truck, text: `Free shipping over ${formatPrice(FREE_SHIPPING_THRESHOLD)}` },
               { icon: RotateCcw, text: "Free 30-day returns" },
@@ -127,7 +127,7 @@ export default async function ProductPage({ params }: Props) {
               { icon: PackageCheck, text: "Plastic-free packaging" },
             ].map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-2.5 font-medium">
-                <Icon className="h-5 w-5 text-brand-violet" /> {text}
+                <Icon className="h-5 w-5 text-[#855000]" /> {text}
               </li>
             ))}
           </ul>
@@ -140,7 +140,7 @@ export default async function ProductPage({ params }: Props) {
           <ul className="mt-5 space-y-3">
             {product.features.map((f) => (
               <li key={f} className="flex gap-3">
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-brand-violet" />
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
                 <span className="text-ink-600">{f}</span>
               </li>
             ))}
@@ -159,7 +159,7 @@ export default async function ProductPage({ params }: Props) {
           {product.tags.length > 0 && (
             <div className="mt-6 flex flex-wrap gap-2">
               {product.tags.map((t) => (
-                <a key={t} href={`/products?q=${encodeURIComponent(t)}`} className="rounded-full bg-ink-50 px-3 py-1 text-xs font-semibold text-ink-500 hover:bg-violet-50 hover:text-brand-violet">
+                <a key={t} href={`/products?q=${encodeURIComponent(t)}`} className="rounded-full bg-ink-50 px-3 py-1 text-xs font-semibold text-ink-500 hover:bg-[#FEF9EC] hover:text-[#855000]">
                   #{t}
                 </a>
               ))}
