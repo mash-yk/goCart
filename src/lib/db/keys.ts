@@ -45,6 +45,13 @@ export const keys = {
   wishlistPrefix: "WISHLIST#",
 
   subscriber: (email: string) => ({ PK: "NEWSLETTER", SK: `EMAIL#${email.toLowerCase()}` }),
+
+  order: (id: string) => ({ PK: `ORDER#${id}`, SK: "ORDER" }),
+  ownerOrder: (ownerId: string, orderId: string) => ({
+    PK: `OWNER#${ownerId}`,
+    SK: `ORDER#${orderId}`,
+  }),
+  orderPrefix: "ORDER#",
 } as const;
 
 /** Names of the global secondary indexes on the table. */

@@ -89,6 +89,17 @@ export function HeaderClient({ categories }: { categories: Category[] }) {
                 {c.name}
               </Link>
             ))}
+            {user?.role === "admin" && (
+              <Link
+                href="/admin/products"
+                className={cn(
+                  "rounded-full px-3.5 py-2 text-sm font-semibold transition text-brand-violet hover:bg-violet-50",
+                  pathname.startsWith("/admin") && "bg-brand-violet text-white hover:bg-brand-violet hover:text-white",
+                )}
+              >
+                Admin
+              </Link>
+            )}
           </nav>
 
           <div className="ml-auto hidden max-w-sm flex-1 md:block">
@@ -187,6 +198,14 @@ export function HeaderClient({ categories }: { categories: Category[] }) {
                 {user ? "My account" : "Sign in"}
               </Link>
             </div>
+            {user?.role === "admin" && (
+              <Link
+                href="/admin/products"
+                className="block text-center rounded-2xl bg-violet-100 p-3 text-sm font-bold text-brand-violet hover:bg-violet-200"
+              >
+                Admin Console
+              </Link>
+            )}
           </div>
         </aside>
       </div>

@@ -150,7 +150,25 @@ export const productUpdateSchema = z
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: "Provide at least one field to update." });
 
+export const checkoutSchema = z.object({
+  paymentMethod: z.enum(["stripe", "cod"]),
+  customer: z.object({
+    name: nameSchema,
+    email: emailSchema,
+    phone: z.string().trim().min(5, "Phone number is required.").max(25),
+  }),
+  shippingAddress: z.object({
+    addressLine1: z.string().trim().min(3, "Street address is required.").max(120),
+    addressLine2: z.string().trim().max(120).optional().or(z.literal("")),
+    city: z.string().trim().min(2, "City is required.").max(60),
+    state: z.string().trim().min(2, "State or province is required.").max(60),
+    postalCode: z.string().trim().min(2, "Postal code is required.").max(20),
+    country: z.string().trim().min(2, "Country is required.").max(60).default("US"),
+  }),
+});
+
 export type SignUpInput = z.infer<typeof signUpSchema>;
 export type SignInInput = z.infer<typeof signInSchema>;
 export type ProductInput = z.infer<typeof productInputSchema>;
 export type ProductUpdateInput = z.infer<typeof productUpdateSchema>;
+export type CheckoutInput = z.infer<typeof checkoutSchema>;

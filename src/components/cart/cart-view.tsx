@@ -7,7 +7,7 @@ import { AlertTriangle, ArrowRight, Lock, ShoppingBag, Sparkles, Trash2, Truck }
 import { toast } from "sonner";
 import { ProductArt } from "@/components/art/product-art";
 import { useStore } from "@/components/providers/store-provider";
-import { Button, buttonClasses } from "@/components/ui/button";
+import { buttonClasses } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Price } from "@/components/ui/price";
 import { QuantityStepper } from "@/components/ui/quantity-stepper";
@@ -215,14 +215,12 @@ export function CartView({ initialCart }: { initialCart: Cart }) {
                 <dd className="text-2xl font-black">{formatPrice(cart.total)}</dd>
               </div>
             </dl>
-            <Button
-              size="lg"
-              className="mt-6 w-full"
-              disabled={cart.total === 0}
-              onClick={() => toast.info("Checkout is coming soon. Payments aren't enabled in this demo store.")}
+            <Link
+              href="/checkout"
+              className={cn(buttonClasses("primary", "lg", "mt-6 w-full"), cart.total === 0 && "pointer-events-none opacity-50")}
             >
-              <Lock className="h-4 w-4" /> Checkout
-            </Button>
+              <Lock className="h-4 w-4" /> Proceed to Checkout
+            </Link>
             <Link href="/products" className="mt-3 block text-center text-sm font-semibold text-ink-500 hover:text-brand-violet">
               Continue shopping
             </Link>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ValidationError } from "@/lib/errors";
 import { parseInput } from "@/lib/validation/parse";
-import { addToCartSchema, productQuerySchema, signUpSchema, updateCartItemSchema } from "@/lib/validation/schemas";
+import { addToCartSchema, checkoutSchema, productQuerySchema, signUpSchema, updateCartItemSchema } from "@/lib/validation/schemas";
 
 describe("signUpSchema", () => {
   it("normalises the email and trims the name", () => {
@@ -64,5 +64,36 @@ describe("productQuerySchema with junk input", () => {
   it("ignores invalid filters instead of failing", () => {
     const q = productQuerySchema.parse({ minPrice: "abc", maxPrice: "-5", minRating: "9", category: "Not A Slug!", q: "x".repeat(300) });
     expect(q).toMatchObject({ minPrice: undefined, maxPrice: undefined, minRating: undefined, category: undefined, q: undefined });
+  });
+});
+
+describe("checkoutSchema", () => {
+  it("validates a complete checkout payload", () => {
+    const valid = {
+      paymentMethod: "cod",
+      customer: {
+        name: "Ada Lovelace",
+        email: "ada@example.com",
+        phone: "+1 555-123-4567",
+      },
+      shippingAddress: {
+        addressLine1: "123 Tech Way",
+        city: "San Francisco",
+        state: "CA",
+        postalCode: "94107",
+        country: "US",
+      },
+    };
+    expect(checkoutSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects invalid payment methods or missing required fields", () => {
+    expect(
+      checkoutSchema.safeParse({
+        paymentMethod: "crypto",
+        customer: { name: "", email: "bad", phone: "" },
+        shippingAddress: { addressLine1: "", city: "", state: "", postalCode: "" },
+      }).success,
+    ).toBe(false);
   });
 });

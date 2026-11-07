@@ -7,7 +7,7 @@ import { Heart, LogOut, ShieldCheck, ShoppingBag, Trash2, User as UserIcon } fro
 import { toast } from "sonner";
 import { useStore } from "@/components/providers/store-provider";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ApiClientError, apiFetch, errorMessage } from "@/lib/client/api";
 import { nameSchema } from "@/lib/validation/schemas";
@@ -119,6 +119,23 @@ export function AccountPanel({ user: initial, cartCount, wishlistCount }: { user
       </aside>
 
       <div className="space-y-6">
+        {user.role === "admin" && (
+          <section className="card p-6 border-brand-violet/30 bg-violet-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-ink text-white shadow-sm">
+                <ShieldCheck className="h-6 w-6 text-brand-violet" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-ink">Administrator Dashboard</h3>
+                <p className="text-xs text-ink-500">Create, update pricing & inventory, or remove store products.</p>
+              </div>
+            </div>
+            <Link href="/admin/products" className={buttonClasses("primary", "md", "shadow-glow")}>
+              Manage Products
+            </Link>
+          </section>
+        )}
+
         <section className="card p-6 sm:p-8">
           <h2 className="flex items-center gap-2 text-xl font-extrabold">
             <UserIcon className="h-5 w-5 text-brand-violet" /> Profile

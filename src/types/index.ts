@@ -195,3 +195,50 @@ export interface Owner {
   id: string;
   kind: "user" | "guest";
 }
+
+export type PaymentMethod = "stripe" | "cod";
+export type PaymentStatus = "paid" | "pending_cod" | "pending_payment" | "failed";
+export type OrderStatus = "confirmed" | "processing" | "shipped" | "delivered" | "cancelled";
+
+export interface CustomerInfo {
+  name: string;
+  email: string;
+  phone: string;
+}
+
+export interface ShippingAddress {
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
+export interface OrderItem {
+  slug: string;
+  name: string;
+  price: number;
+  quantity: number;
+  lineTotal: number;
+  art?: Art;
+}
+
+export interface Order {
+  id: string;
+  ownerId: string;
+  customer: CustomerInfo;
+  shippingAddress: ShippingAddress;
+  items: OrderItem[];
+  itemCount: number;
+  subtotal: number;
+  shipping: number;
+  savings: number;
+  total: number;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  status: OrderStatus;
+  stripeSessionId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
