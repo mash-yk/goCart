@@ -46,12 +46,12 @@ export function NewsletterForm() {
 
   return (
     <form onSubmit={onSubmit} noValidate className="w-full max-w-md">
-      <div className="flex gap-2 rounded-full bg-white p-1.5 shadow-card">
+      <div className="flex gap-2 rounded-full bg-white dark:bg-[#252320] border border-[#E5DAC0] dark:border-[#38342D] p-1.5 shadow-card">
         <label htmlFor="newsletter-email" className="sr-only">
           Email address
         </label>
         <div className="relative flex-1">
-          <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+          <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 dark:text-[#A39E93]" />
           <input
             id="newsletter-email"
             type="email"
@@ -60,15 +60,15 @@ export function NewsletterForm() {
             placeholder="you@example.com"
             aria-invalid={Boolean(error) || undefined}
             aria-describedby={error ? "newsletter-error" : undefined}
-            className="h-11 w-full rounded-full bg-transparent pl-10 pr-3 text-sm text-ink placeholder:text-ink-300 focus:outline-none"
+            className="h-11 w-full rounded-full bg-transparent pl-10 pr-3 text-sm text-ink dark:text-[#F5F3EF] placeholder:text-ink-400 dark:placeholder:text-[#7A756C] focus:outline-none"
           />
         </div>
-        <Button type="submit" variant="dark" loading={loading}>
+        <Button type="submit" variant="primary" loading={loading} className="px-5">
           Subscribe
         </Button>
       </div>
       {error && (
-        <p id="newsletter-error" role="alert" className="mt-2 pl-4 text-sm font-semibold text-white">
+        <p id="newsletter-error" role="alert" className="mt-2 pl-4 text-sm font-semibold text-rose-600 dark:text-rose-400">
           {error}
         </p>
       )}

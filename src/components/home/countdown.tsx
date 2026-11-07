@@ -29,9 +29,9 @@ export function Countdown() {
   return (
     <div className="flex gap-2" aria-label="Time left on today's deals" role="timer">
       {parts.map((p, i) => (
-        <div key={i} className="min-w-16 rounded-2xl bg-white/10 px-3 py-2 text-center backdrop-blur">
+        <div key={i} className="min-w-16 rounded-2xl bg-black/5 text-ink dark:bg-white/10 dark:text-white px-3 py-2 text-center backdrop-blur border border-black/5 dark:border-white/5">
           <span className="block font-mono text-2xl font-black tabular-nums">{p}</span>
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-white/60">{["hrs", "min", "sec"][i]}</span>
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-ink-500 dark:text-white/60">{["hrs", "min", "sec"][i]}</span>
         </div>
       ))}
     </div>
