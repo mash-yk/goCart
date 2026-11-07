@@ -343,8 +343,8 @@ export function AdminProductsView({
 
       {/* Delete Confirmation Modal */}
       {deletingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/60 backdrop-blur-sm">
-          <div className="card w-full max-w-md p-6 bg-white shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/60 dark:bg-black/75 backdrop-blur-sm">
+          <div className="card w-full max-w-md p-6 bg-white dark:bg-[#1A1916] shadow-2xl">
             <div className="flex items-center gap-3 text-rose-600">
               <div className="grid h-10 w-10 place-items-center rounded-full bg-rose-100">
                 <AlertTriangle className="h-5 w-5" />

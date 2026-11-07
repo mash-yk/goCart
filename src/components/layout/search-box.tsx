@@ -100,7 +100,7 @@ export function SearchBox({ className, autoFocus, onNavigate }: { className?: st
         <label htmlFor={`${listId}-input`} className="sr-only">
           Search products
         </label>
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" aria-hidden />
+        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 dark:text-[#A39E93]" aria-hidden />
         <input
           id={`${listId}-input`}
           type="search"
@@ -118,15 +118,15 @@ export function SearchBox({ className, autoFocus, onNavigate }: { className?: st
           aria-expanded={showDropdown}
           aria-controls={listId}
           aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
-          className="h-11 w-full rounded-full border border-[#E5DED0] bg-white/90 pl-11 pr-10 text-sm placeholder:text-ink-400 transition focus:border-[#F5B82E] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#FDC841]/25 [&::-webkit-search-cancel-button]:hidden"
+          className="h-11 w-full rounded-full border border-[#E5DED0] bg-white/90 pl-11 pr-10 text-sm text-ink placeholder:text-ink-400 transition focus:border-[#F5B82E] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#FDC841]/25 dark:border-[#2C2924] dark:bg-[#1A1916] dark:text-[#F5F3EF] dark:placeholder:text-[#7A756C] dark:focus:bg-[#1A1916] [&::-webkit-search-cancel-button]:hidden"
         />
         {loading ? (
-          <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-ink-400" aria-hidden />
+          <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-ink-400 dark:text-[#A39E93]" aria-hidden />
         ) : query ? (
           <button
             type="button"
             onClick={() => setQuery("")}
-            className="absolute right-3 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full text-ink-400 hover:bg-ink-100 hover:text-ink"
+            className="absolute right-3 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full text-ink-400 hover:bg-ink-100 hover:text-ink dark:text-[#A39E93] dark:hover:bg-[#252320] dark:hover:text-[#F5F3EF]"
             aria-label="Clear search"
           >
             <X className="h-3.5 w-3.5" />
@@ -135,7 +135,7 @@ export function SearchBox({ className, autoFocus, onNavigate }: { className?: st
       </form>
 
       {showDropdown && (
-        <div className="absolute inset-x-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-3xl border border-[#EDE7D9] bg-white/95 p-2 shadow-card-hover backdrop-blur-md">
+        <div className="absolute inset-x-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-3xl border border-[#EDE7D9] bg-white/95 p-2 shadow-card-hover backdrop-blur-md dark:border-[#2C2924] dark:bg-[#181715]/95 dark:shadow-2xl">
           {suggestions.length > 0 ? (
             <ul id={listId} role="listbox" aria-label="Search suggestions">
               {suggestions.map((s, i) => (
@@ -147,14 +147,14 @@ export function SearchBox({ className, autoFocus, onNavigate }: { className?: st
                       onNavigate?.();
                     }}
                     onMouseEnter={() => setActive(i)}
-                    className={cn("flex items-center gap-3 rounded-2xl p-2 transition", i === active && "bg-ink-50")}
+                    className={cn("flex items-center gap-3 rounded-2xl p-2 transition", i === active ? "bg-ink-50 dark:bg-[#252320]" : "hover:bg-ink-50 dark:hover:bg-[#252320]")}
                   >
                     <ProductArt art={s.art} name={s.name} className="h-11 w-11 shrink-0 rounded-xl" iconClassName="h-5 w-5" />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">{s.name}</span>
-                      <span className="block text-xs capitalize text-ink-400">{s.categorySlug.replace("-", " ")}</span>
+                      <span className="block truncate text-sm font-semibold text-ink dark:text-[#F5F3EF]">{s.name}</span>
+                      <span className="block text-xs capitalize text-ink-400 dark:text-[#A39E93]">{s.categorySlug.replace("-", " ")}</span>
                     </span>
-                    <span className="text-sm font-bold">{formatPrice(s.price)}</span>
+                    <span className="text-sm font-bold text-ink dark:text-[#F5F3EF]">{formatPrice(s.price)}</span>
                   </Link>
                 </li>
               ))}
@@ -162,18 +162,18 @@ export function SearchBox({ className, autoFocus, onNavigate }: { className?: st
                 <button
                   type="button"
                   onClick={() => go(`/products?q=${encodeURIComponent(query.trim())}`)}
-                  className="mt-1 w-full rounded-2xl bg-brand-gradient-soft px-3 py-2.5 text-left text-sm font-semibold text-brand-violet hover:opacity-80"
+                  className="mt-1 w-full rounded-2xl bg-[#FDC841]/15 px-3 py-2.5 text-left text-sm font-semibold text-[#855000] dark:text-[#FDC841] hover:bg-[#FDC841]/25 transition"
                 >
                   See all results for &ldquo;{query.trim()}&rdquo;
                 </button>
               </li>
             </ul>
           ) : !loading ? (
-            <p className="px-3 py-4 text-sm text-ink-500">
+            <p className="px-3 py-4 text-sm text-ink-500 dark:text-[#A39E93]">
               No products match &ldquo;{query.trim()}&rdquo;. Try a different word.
             </p>
           ) : (
-            <p className="px-3 py-4 text-sm text-ink-400">Searching...</p>
+            <p className="px-3 py-4 text-sm text-ink-400 dark:text-[#A39E93]">Searching...</p>
           )}
         </div>
       )}

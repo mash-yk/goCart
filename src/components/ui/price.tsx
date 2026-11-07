@@ -17,17 +17,17 @@ export function Price({
     <div className={cn("flex items-baseline gap-2", className)}>
       <span
         className={cn(
-          "font-bold tracking-tight",
+          "font-bold tracking-tight text-ink dark:text-[#F5F3EF]",
           size === "sm" && "text-base",
           size === "md" && "text-lg",
           size === "lg" && "text-3xl sm:text-4xl",
-          onSale && "text-[#D97706]",
+          onSale && "text-[#D97706] dark:text-[#FDC841]",
         )}
       >
         {formatPrice(price)}
       </span>
       {onSale && (
-        <span className={cn("text-ink-400 line-through", size === "lg" ? "text-lg" : "text-sm")}>
+        <span className={cn("text-ink-400 dark:text-[#7A756C] line-through", size === "lg" ? "text-lg" : "text-sm")}>
           <span className="sr-only">Was </span>
           {formatPrice(compareAtPrice!)}
         </span>

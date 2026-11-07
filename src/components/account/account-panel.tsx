@@ -88,7 +88,7 @@ export function AccountPanel({ user: initial, cartCount, wishlistCount }: { user
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
       <aside className="card relative overflow-hidden p-6 text-center">
         <div className="absolute inset-x-0 top-0 h-24 bg-brand-gradient" aria-hidden />
-        <div className="relative mx-auto mt-8 grid h-24 w-24 place-items-center rounded-full border-4 border-white bg-ink text-3xl font-black text-white shadow-card">
+        <div className="relative mx-auto mt-8 grid h-24 w-24 place-items-center rounded-full border-4 border-white dark:border-[#2C2924] bg-ink text-3xl font-black text-white shadow-card">
           {initials}
         </div>
         <p className="mt-4 text-xl font-extrabold">{user.name}</p>
@@ -102,12 +102,12 @@ export function AccountPanel({ user: initial, cartCount, wishlistCount }: { user
           Member since {new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
         </p>
         <div className="mt-6 grid grid-cols-2 gap-3">
-          <Link href="/cart" className="rounded-2xl bg-ink-50 p-4 transition hover:bg-[#FEF9EC]">
+          <Link href="/cart" className="rounded-2xl bg-ink-50 p-4 transition hover:bg-[#FEF9EC] dark:hover:bg-[#2A261D]">
             <ShoppingBag className="mx-auto h-5 w-5 text-ink-700" />
             <p className="mt-1 text-2xl font-black">{cartCount}</p>
             <p className="text-xs text-ink-500">In cart</p>
           </Link>
-          <Link href="/wishlist" className="rounded-2xl bg-ink-50 p-4 transition hover:bg-[#FEF9EC]">
+          <Link href="/wishlist" className="rounded-2xl bg-ink-50 p-4 transition hover:bg-[#FEF9EC] dark:hover:bg-[#2A261D]">
             <Heart className="mx-auto h-5 w-5 text-[#D97706]" />
             <p className="mt-1 text-2xl font-black">{wishlistCount}</p>
             <p className="text-xs text-ink-500">Saved</p>
@@ -120,7 +120,7 @@ export function AccountPanel({ user: initial, cartCount, wishlistCount }: { user
 
       <div className="space-y-6">
         {user.role === "admin" && (
-          <section className="card p-6 border-[#FDC841]/40 bg-[#FEF9EC] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <section className="card p-6 border-[#FDC841]/40 bg-[#FEF9EC] dark:bg-[#252219] dark:border-[#FDC841]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#1E1E1E] text-white shadow-sm">
                 <ShieldCheck className="h-6 w-6 text-[#FDC841]" />

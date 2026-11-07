@@ -10,7 +10,7 @@ export function Logo({ className, light = false }: { className?: string; light?:
           <circle cx="17" cy="7" r="2.2" fill="currentColor" stroke="none" />
         </svg>
       </span>
-      <span className={cn("text-xl font-black tracking-tight", light ? "text-white" : "text-ink")}>
+      <span className={cn("text-xl font-black tracking-tight", light ? "text-white" : "text-ink dark:text-white")}>
         lumora<span className="text-[#FDC841]">.</span>
       </span>
     </Link>

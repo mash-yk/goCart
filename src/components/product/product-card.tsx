@@ -17,7 +17,7 @@ export function ProductCard({ product, priority, className }: { product: Product
   return (
     <article
       className={cn(
-        "group relative flex flex-col rounded-[2rem] border border-[#EDE7D9] bg-white p-3 shadow-card transition-all duration-500 hover:-translate-y-1.5 hover:shadow-card-hover",
+        "group relative flex flex-col rounded-[2rem] border border-[#EDE7D9] bg-white p-3 shadow-card transition-all duration-500 hover:-translate-y-1.5 hover:shadow-card-hover dark:border-[#2C2924] dark:bg-[#1A1916] dark:shadow-none",
         className,
       )}
     >
@@ -32,16 +32,16 @@ export function ProductCard({ product, priority, className }: { product: Product
         <div className="absolute left-2.5 top-2.5 flex flex-col gap-1.5">
           {discount > 0 && <Badge tone="orange">-{discount}%</Badge>}
           {product.featured && discount === 0 && <Badge tone="dark">Bestseller</Badge>}
-          {outOfStock && <Badge tone="neutral" className="bg-white/95">Sold out</Badge>}
+          {outOfStock && <Badge tone="neutral" className="bg-white/95 dark:bg-[#1E1E1E]">Sold out</Badge>}
           {lowStock && <Badge tone="warning">Only {product.stock} left</Badge>}
         </div>
       </Link>
       <WishlistButton productSlug={product.slug} productName={product.name} className="absolute right-5 top-5 z-10" />
 
       <div className="flex flex-1 flex-col px-1.5 pb-1 pt-3.5">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-ink-400">{product.categorySlug.replace("-", " ")}</p>
-        <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-snug sm:text-base text-ink">
-          <Link href={`/products/${product.slug}`} className="after:absolute after:inset-0 after:rounded-[2rem] hover:text-[#855000]">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-ink-400 dark:text-[#A39E93]">{product.categorySlug.replace("-", " ")}</p>
+        <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-snug sm:text-base text-ink dark:text-[#F5F3EF]">
+          <Link href={`/products/${product.slug}`} className="after:absolute after:inset-0 after:rounded-[2rem] hover:text-[#855000] dark:hover:text-[#FDC841]">
             {product.name}
           </Link>
         </h3>

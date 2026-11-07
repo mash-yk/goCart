@@ -220,8 +220,8 @@ export function ProductFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-ink/60 backdrop-blur-sm overflow-y-auto">
-      <div className="card relative w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 bg-white shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-ink/60 dark:bg-black/75 backdrop-blur-sm overflow-y-auto">
+      <div className="card relative w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 bg-white dark:bg-[#1A1916] shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-ink-100 pb-4">
           <div>
@@ -275,7 +275,7 @@ export function ProductFormModal({
                   disabled={isEditing}
                   value={categorySlug}
                   onChange={(e) => setCategorySlug(e.target.value)}
-                  className="h-12 w-full rounded-2xl border border-ink-200 bg-white px-4 text-sm text-ink focus:border-brand-violet focus:outline-none focus:ring-4 focus:ring-brand-violet/15"
+                  className="h-12 w-full rounded-2xl border border-ink-200 bg-white dark:bg-[#252320] dark:border-[#38342D] px-4 text-sm text-ink focus:border-[#FDC841] focus:outline-none focus:ring-4 focus:ring-[#FDC841]/25"
                 >
                   {categories.map((c) => (
                     <option key={c.slug} value={c.slug}>
@@ -299,7 +299,7 @@ export function ProductFormModal({
                 rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full rounded-2xl border border-ink-200 bg-white p-4 text-sm text-ink placeholder:text-ink-300 focus:border-brand-violet focus:outline-none focus:ring-4 focus:ring-brand-violet/15"
+                className="w-full rounded-2xl border border-ink-200 bg-white dark:bg-[#252320] dark:border-[#38342D] p-4 text-sm text-ink placeholder:text-ink-400 focus:border-[#FDC841] focus:outline-none focus:ring-4 focus:ring-[#FDC841]/25"
                 placeholder="Detailed description of features, soundstage, craftsmanship..."
                 required
               />
@@ -502,14 +502,14 @@ export function ProductFormModal({
                           value={sp.label}
                           onChange={(e) => updateSpec(idx, "label", e.target.value)}
                           placeholder="Label (e.g. Battery)"
-                          className="h-9 w-1/2 rounded-xl border border-ink-200 px-3 text-xs text-ink"
+                          className="h-9 w-1/2 rounded-xl border border-ink-200 dark:border-[#38342D] bg-white dark:bg-[#252320] px-3 text-xs text-ink"
                         />
                         <input
                           type="text"
                           value={sp.value}
                           onChange={(e) => updateSpec(idx, "value", e.target.value)}
                           placeholder="Value (e.g. 40 hrs)"
-                          className="h-9 w-1/2 rounded-xl border border-ink-200 px-3 text-xs text-ink"
+                          className="h-9 w-1/2 rounded-xl border border-ink-200 dark:border-[#38342D] bg-white dark:bg-[#252320] px-3 text-xs text-ink"
                         />
                         <button
                           type="button"

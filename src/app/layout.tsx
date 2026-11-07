@@ -57,7 +57,26 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const { user, cartCount, wishlist, categories } = await loadShellData();
 
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var stored = localStorage.getItem("lumora_theme");
+                  var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+                  if (stored === "dark" || (!stored && prefersDark)) {
+                    document.documentElement.classList.add("dark");
+                  } else {
+                    document.documentElement.classList.remove("dark");
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="flex min-h-screen flex-col font-sans">
         <a
           href="#main"
