@@ -1,5 +1,6 @@
 import "server-only";
 import { revalidateTag, unstable_cache } from "next/cache";
+import { categories as staticCategories, products as staticProducts } from "@/data/catalog";
 import { categoryRepository } from "@/lib/db/repositories/category.repository";
 import { productRepository } from "@/lib/db/repositories/product.repository";
 import { findRelatedProducts, queryProducts } from "@/lib/business/catalog-query";
@@ -11,20 +12,42 @@ const CATALOG_TAG = "catalog";
 const CATALOG_TTL_SECONDS = 300;
 
 /**
- * The catalogue is small and read-heavy, so the product list is read from DynamoDB
+ * The catalogue is read-heavy, so the product list is read from DynamoDB
  * once and cached for 5 minutes. Writes call `revalidateTag("catalog")` to refresh it.
- * Search and filtering then run in memory on the cached list (see docs/DATABASE.md
- * for when to move to a search service).
+ * If DynamoDB is not yet provisioned in development, it gracefully falls back
+ * to the bundled seed catalogue.
  */
-const getAllProductsCached = unstable_cache(() => productRepository.listAll(), ["products:all"], {
-  tags: [CATALOG_TAG],
-  revalidate: CATALOG_TTL_SECONDS,
-});
+const getAllProductsCached = unstable_cache(
+  async (): Promise<Product[]> => {
+    try {
+      const items = await productRepository.listAll();
+      return items.length > 0 ? items : staticProducts;
+    } catch {
+      return staticProducts;
+    }
+  },
+  ["products:all"],
+  {
+    tags: [CATALOG_TAG],
+    revalidate: CATALOG_TTL_SECONDS,
+  }
+);
 
-const getCategoriesCached = unstable_cache(() => categoryRepository.list(), ["categories:all"], {
-  tags: [CATALOG_TAG],
-  revalidate: CATALOG_TTL_SECONDS,
-});
+const getCategoriesCached = unstable_cache(
+  async (): Promise<Category[]> => {
+    try {
+      const items = await categoryRepository.list();
+      return items.length > 0 ? items : staticCategories;
+    } catch {
+      return staticCategories;
+    }
+  },
+  ["categories:all"],
+  {
+    tags: [CATALOG_TAG],
+    revalidate: CATALOG_TTL_SECONDS,
+  }
+);
 
 export const catalogService = {
   getCategories(): Promise<Category[]> {

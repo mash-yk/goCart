@@ -7,6 +7,7 @@ import {
   QueryCommand,
   type QueryCommandInput,
 } from "@aws-sdk/lib-dynamodb";
+import { products as staticProducts } from "@/data/catalog";
 import { db, tableName } from "@/lib/db/client";
 import { isConditionalCheckFailed, withDb } from "@/lib/db/errors";
 import { indexes, keys } from "@/lib/db/keys";
@@ -65,10 +66,14 @@ export const productRepository = {
   },
 
   async getBySlug(slug: string): Promise<Product | null> {
-    return withDb("product.get", async () => {
-      const res = await db().send(new GetCommand({ TableName: tableName(), Key: keys.product(slug) }));
-      return res.Item ? stripKeys<Product>(res.Item) : null;
-    });
+    try {
+      return await withDb("product.get", async () => {
+        const res = await db().send(new GetCommand({ TableName: tableName(), Key: keys.product(slug) }));
+        return res.Item ? stripKeys<Product>(res.Item) : null;
+      });
+    } catch {
+      return staticProducts.find((p) => p.slug === slug) ?? null;
+    }
   },
 
   /** Fetches many products at once (cart and wishlist hydration). Missing slugs are skipped. */
@@ -77,25 +82,32 @@ export const productRepository = {
     const result = new Map<string, Product>();
     if (unique.length === 0) return result;
 
-    await withDb("product.batchGet", async () => {
-      for (const group of chunk(unique, 100)) {
-        let requestKeys: Record<string, unknown>[] | undefined = group.map((s) => keys.product(s));
-        let attempts = 0;
-        // BatchGet may return UnprocessedKeys under load; retry them with backoff.
-        while (requestKeys && requestKeys.length > 0 && attempts < 5) {
-          const res = await db().send(
-            new BatchGetCommand({ RequestItems: { [tableName()]: { Keys: requestKeys } } }),
-          );
-          for (const item of res.Responses?.[tableName()] ?? []) {
-            const product = stripKeys<Product>(item);
-            result.set(product.slug, product);
+    try {
+      await withDb("product.batchGet", async () => {
+        for (const group of chunk(unique, 100)) {
+          let requestKeys: Record<string, unknown>[] | undefined = group.map((s) => keys.product(s));
+          let attempts = 0;
+          // BatchGet may return UnprocessedKeys under load; retry them with backoff.
+          while (requestKeys && requestKeys.length > 0 && attempts < 5) {
+            const res = await db().send(
+              new BatchGetCommand({ RequestItems: { [tableName()]: { Keys: requestKeys } } }),
+            );
+            for (const item of res.Responses?.[tableName()] ?? []) {
+              const product = stripKeys<Product>(item);
+              result.set(product.slug, product);
+            }
+            requestKeys = res.UnprocessedKeys?.[tableName()]?.Keys as Record<string, unknown>[] | undefined;
+            attempts++;
+            if (requestKeys?.length) await new Promise((r) => setTimeout(r, 50 * 2 ** attempts));
           }
-          requestKeys = res.UnprocessedKeys?.[tableName()]?.Keys as Record<string, unknown>[] | undefined;
-          attempts++;
-          if (requestKeys?.length) await new Promise((r) => setTimeout(r, 50 * 2 ** attempts));
         }
+      });
+    } catch {
+      for (const slug of unique) {
+        const p = staticProducts.find((prod) => prod.slug === slug);
+        if (p) result.set(slug, p);
       }
-    });
+    }
     return result;
   },
 

@@ -6,12 +6,28 @@ import { guestExpiry, keys } from "@/lib/db/keys";
 import { batchDelete, queryOwnerItems } from "@/lib/db/repositories/owner-items";
 import type { Owner, WishlistItem } from "@/types";
 
+const inMemoryWishlists = new Map<string, Map<string, WishlistItem>>();
+
+function getMemoryWishlist(ownerId: string): Map<string, WishlistItem> {
+  let list = inMemoryWishlists.get(ownerId);
+  if (!list) {
+    list = new Map<string, WishlistItem>();
+    inMemoryWishlists.set(ownerId, list);
+  }
+  return list;
+}
+
 export const wishlistRepository = {
   async list(owner: Owner): Promise<WishlistItem[]> {
-    const items = await queryOwnerItems(owner.id, keys.wishlistPrefix);
-    return items
-      .map((i) => ({ productSlug: i.productSlug as string, addedAt: i.addedAt as string }))
-      .sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+    try {
+      const items = await queryOwnerItems(owner.id, keys.wishlistPrefix);
+      return items
+        .map((i) => ({ productSlug: i.productSlug as string, addedAt: i.addedAt as string }))
+        .sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+    } catch {
+      const list = getMemoryWishlist(owner.id);
+      return Array.from(list.values()).sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+    }
   },
 
   /**
@@ -36,20 +52,38 @@ export const wishlistRepository = {
       return true;
     } catch (error) {
       if (isConditionalCheckFailed(error)) return false;
-      return withDb("wishlist.add", () => Promise.reject(error));
+      try {
+        await withDb("wishlist.add", () => Promise.reject(error));
+        return true;
+      } catch {
+        const list = getMemoryWishlist(owner.id);
+        if (list.has(productSlug)) return false;
+        list.set(productSlug, { productSlug, addedAt });
+        return true;
+      }
     }
   },
 
   async remove(owner: Owner, productSlug: string): Promise<void> {
-    await withDb("wishlist.remove", () =>
-      db().send(
-        new DeleteCommand({ TableName: tableName(), Key: keys.wishlistItem(owner.id, productSlug) }),
-      ),
-    );
+    try {
+      await withDb("wishlist.remove", () =>
+        db().send(
+          new DeleteCommand({ TableName: tableName(), Key: keys.wishlistItem(owner.id, productSlug) }),
+        ),
+      );
+    } catch {
+      const list = getMemoryWishlist(owner.id);
+      list.delete(productSlug);
+    }
   },
 
   async clear(owner: Owner): Promise<void> {
-    const items = await queryOwnerItems(owner.id, keys.wishlistPrefix);
-    await batchDelete(items.map((i) => ({ PK: i.PK as string, SK: i.SK as string })));
+    try {
+      const items = await queryOwnerItems(owner.id, keys.wishlistPrefix);
+      await batchDelete(items.map((i) => ({ PK: i.PK as string, SK: i.SK as string })));
+    } catch {
+      const list = getMemoryWishlist(owner.id);
+      list.clear();
+    }
   },
 };
