@@ -10,24 +10,36 @@ export function ThemeToggle({ className }: { className?: string }) {
 
   useEffect(() => {
     setMounted(true);
-    const hasDarkClass = document.documentElement.classList.contains("dark");
-    setIsDark(hasDarkClass);
+    const sync = () => {
+      const dark = document.documentElement.classList.contains("dark");
+      setIsDark(dark);
+    };
+    sync();
+
+    window.addEventListener("lumora_theme_changed", sync);
+    return () => window.removeEventListener("lumora_theme_changed", sync);
   }, []);
 
   const toggleTheme = () => {
-    const nextDark = !isDark;
-    setIsDark(nextDark);
+    const isCurrentlyDark = document.documentElement.classList.contains("dark");
+    const nextDark = !isCurrentlyDark;
+
     if (nextDark) {
       document.documentElement.classList.add("dark");
+      document.documentElement.setAttribute("data-theme", "dark");
       try {
         localStorage.setItem("lumora_theme", "dark");
       } catch {}
     } else {
       document.documentElement.classList.remove("dark");
+      document.documentElement.setAttribute("data-theme", "light");
       try {
         localStorage.setItem("lumora_theme", "light");
       } catch {}
     }
+
+    setIsDark(nextDark);
+    window.dispatchEvent(new Event("lumora_theme_changed"));
   };
 
   if (!mounted) {
@@ -35,7 +47,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       <div
         className={cn(
           "grid h-10 w-10 place-items-center rounded-full text-ink transition dark:text-[#EAE6DF]",
-          className
+          className,
         )}
       >
         <span className="h-5 w-5" />
@@ -48,8 +60,8 @@ export function ThemeToggle({ className }: { className?: string }) {
       type="button"
       onClick={toggleTheme}
       className={cn(
-        "relative grid h-10 w-10 place-items-center rounded-full text-ink transition duration-300 hover:bg-ink-100 hover:text-ink active:scale-95 dark:text-[#EAE6DF] dark:hover:bg-[#252320] dark:hover:text-[#FDC841] focus-visible:ring-2 focus-visible:ring-[#FDC841]",
-        className
+        "relative grid h-10 w-10 place-items-center rounded-full text-ink transition duration-300 hover:bg-ink-100 active:scale-95 dark:text-[#EAE6DF] dark:hover:bg-[#252320] dark:hover:text-[#FDC841] focus-visible:ring-2 focus-visible:ring-[#FDC841]",
+        className,
       )}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       title={isDark ? "Switch to light mode" : "Switch to dark mode"}
@@ -62,4 +74,3 @@ export function ThemeToggle({ className }: { className?: string }) {
     </button>
   );
 }
-

@@ -86,11 +86,11 @@ function FilterPanel({ categories, counts, lockedCategory }: FilterProps) {
                     aria-pressed={active}
                     className={cn(
                       "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-medium transition",
-                      active ? "bg-ink text-white" : "hover:bg-ink-50",
+                      active ? "bg-ink text-white dark:bg-[#FDC841] dark:text-[#181715]" : "hover:bg-ink-50 dark:hover:bg-[#252320] text-ink dark:text-[#F5F3EF]",
                     )}
                   >
                     {c.name}
-                    <span className={cn("text-xs", active ? "text-white/70" : "text-ink-400")}>
+                    <span className={cn("text-xs", active ? "text-white/70 dark:text-[#181715]/80" : "text-ink-400 dark:text-[#A39E93]")}>
                       {c.slug ? (counts[c.slug] ?? 0) : Object.values(counts).reduce((a, b) => a + b, 0)}
                     </span>
                   </button>

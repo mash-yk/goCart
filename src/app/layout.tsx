@@ -67,8 +67,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   var stored = localStorage.getItem("lumora_theme");
                   if (stored === "dark") {
                     document.documentElement.classList.add("dark");
+                    document.documentElement.setAttribute("data-theme", "dark");
                   } else {
                     document.documentElement.classList.remove("dark");
+                    document.documentElement.setAttribute("data-theme", "light");
                   }
                 } catch (e) {}
               })();
