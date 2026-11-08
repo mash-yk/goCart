@@ -7,7 +7,7 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
       <body style={{ margin: 0, fontFamily: "system-ui, sans-serif", background: "#fbf9ff", color: "#140b2e" }}>
         <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", textAlign: "center", padding: 24 }}>
           <div>
-            <h1 style={{ fontSize: 36, fontWeight: 900, margin: 0 }}>Lumora is taking a breather.</h1>
+            <h1 style={{ fontSize: 36, fontWeight: 900, margin: 0 }}>goCart is taking a breather.</h1>
             <p style={{ color: "#6a5aa8", marginTop: 12 }}>Something went wrong on our side. Please try again in a moment.</p>
             <button
               onClick={reset}

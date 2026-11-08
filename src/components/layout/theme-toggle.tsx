@@ -16,8 +16,8 @@ export function ThemeToggle({ className }: { className?: string }) {
     };
     sync();
 
-    window.addEventListener("lumora_theme_changed", sync);
-    return () => window.removeEventListener("lumora_theme_changed", sync);
+    window.addEventListener("gocart_theme_changed", sync);
+    return () => window.removeEventListener("gocart_theme_changed", sync);
   }, []);
 
   const toggleTheme = () => {
@@ -28,18 +28,18 @@ export function ThemeToggle({ className }: { className?: string }) {
       document.documentElement.classList.add("dark");
       document.documentElement.setAttribute("data-theme", "dark");
       try {
-        localStorage.setItem("lumora_theme", "dark");
+        localStorage.setItem("gocart_theme", "dark");
       } catch {}
     } else {
       document.documentElement.classList.remove("dark");
       document.documentElement.setAttribute("data-theme", "light");
       try {
-        localStorage.setItem("lumora_theme", "light");
+        localStorage.setItem("gocart_theme", "light");
       } catch {}
     }
 
     setIsDark(nextDark);
-    window.dispatchEvent(new Event("lumora_theme_changed"));
+    window.dispatchEvent(new Event("gocart_theme_changed"));
   };
 
   if (!mounted) {

@@ -84,7 +84,7 @@ export function AuthForms({ next }: { next: string }) {
     try {
       const { user } = await apiFetch<{ user: PublicUser }>(`/api/auth/${mode}`, { method: "POST", json: payload });
       setUser(user);
-      toast.success(mode === "signup" ? `Welcome to Lumora, ${user.name.split(" ")[0]}!` : `Welcome back, ${user.name.split(" ")[0]}!`);
+      toast.success(mode === "signup" ? `Welcome to goCart, ${user.name.split(" ")[0]}!` : `Welcome back, ${user.name.split(" ")[0]}!`);
       router.replace(next);
       router.refresh();
     } catch (error) {

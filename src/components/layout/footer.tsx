@@ -12,7 +12,7 @@ export function Footer({ categories }: { categories: Category[] }) {
         <div className="lg:col-span-2">
           <Logo />
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-ink-600 dark:text-[#CDC4B3]">
-            Lumora curates aesthetic, beautifully engineered tech and lifestyle gear designed with timeless warmth and precision.
+            goCart curates aesthetic, beautifully engineered tech and lifestyle gear designed with timeless warmth and precision.
           </p>
           <div className="mt-6 flex gap-2">
             {[Instagram, Twitter, Youtube, Github].map((Icon, i) => (
@@ -59,7 +59,7 @@ export function Footer({ categories }: { categories: Category[] }) {
         </div>
       </div>
       <div className="border-t border-black/10 dark:border-white/10 py-6 text-center text-xs text-ink-500 dark:text-[#9C9281]">
-        <p>&copy; {year} Lumora Inc. All rights reserved.</p>
+        <p>&copy; {year} goCart Inc. All rights reserved.</p>
       </div>
     </footer>
   );

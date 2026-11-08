@@ -17,13 +17,13 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Lumora: Tech & lifestyle gear that glows up your everyday",
-    template: "%s | Lumora",
+    default: "goCart: Tech & lifestyle gear that glows up your everyday",
+    template: "%s | goCart",
   },
   description:
-    "Shop bold, beautifully made headphones, wearables, smart home gadgets, workspace upgrades, travel bags and fitness gear at Lumora.",
+    "Shop bold, beautifully made headphones, wearables, smart home gadgets, workspace upgrades, travel bags and fitness gear at goCart.",
   openGraph: {
-    title: "Lumora",
+    title: "goCart",
     description: "Tech & lifestyle gear that glows up your everyday.",
     type: "website",
   },
@@ -64,7 +64,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             __html: `
               (function() {
                 try {
-                  var stored = localStorage.getItem("lumora_theme");
+                  var stored = localStorage.getItem("gocart_theme");
                   if (stored === "dark") {
                     document.documentElement.classList.add("dark");
                     document.documentElement.setAttribute("data-theme", "dark");

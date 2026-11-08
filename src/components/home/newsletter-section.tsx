@@ -10,7 +10,7 @@ export function NewsletterSection() {
           <div>
             <h2 className="text-3xl font-black tracking-tight sm:text-5xl text-ink dark:text-white">Get 10% off your first order.</h2>
             <p className="mt-3 max-w-md text-ink-600 dark:text-[#CDC4B3]">
-              Join the Lumora list for early drops, member-only deals and the occasional very good playlist. No spam, ever.
+              Join the goCart list for early drops, member-only deals and the occasional very good playlist. No spam, ever.
             </p>
           </div>
           <div className="lg:justify-self-end">

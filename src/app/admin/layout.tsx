@@ -6,7 +6,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
-  title: "Admin Console | Lumora",
+  title: "Admin console",
   robots: { index: false },
 };
 

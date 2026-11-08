@@ -91,7 +91,7 @@ async function readGuestId(): Promise<string | null> {
 
 /**
  * Who owns the cart and wishlist for this request: the signed-in user,
- * or an anonymous guest identified by the `lumora_gid` cookie.
+ * or an anonymous guest identified by the `gocart_gid` cookie.
  *
  * Pass `createIfMissing` from Route Handlers to issue a guest id on the first write.
  */
