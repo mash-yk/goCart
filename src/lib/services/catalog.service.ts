@@ -1,9 +1,9 @@
 import "server-only";
 import { revalidateTag, unstable_cache } from "next/cache";
-import { categories as staticCategories, products as staticProducts } from "@/data/catalog";
 import { categoryRepository } from "@/lib/db/repositories/category.repository";
 import { productRepository } from "@/lib/db/repositories/product.repository";
-import { findRelatedProducts, queryProducts } from "@/lib/business/catalog-query";
+import { buildProductWhere, PRODUCT_ORDER_BY } from "@/lib/db/product-query";
+import { findRelatedProducts, paginate, queryProducts } from "@/lib/business/catalog-query";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import type { ProductInput, ProductUpdateInput } from "@/lib/validation/schemas";
 import type { ArtIcon, Category, Paginated, Product, ProductQuery } from "@/types";
@@ -12,41 +12,57 @@ const CATALOG_TAG = "catalog";
 const CATALOG_TTL_SECONDS = 300;
 
 /**
- * The catalogue is read-heavy, so the product list is read from DynamoDB
- * once and cached for 5 minutes. Writes call `revalidateTag("catalog")` to refresh it.
- * If DynamoDB is not yet provisioned in development, it gracefully falls back
- * to the bundled seed catalogue.
+ * Catalog reads are cached for five minutes (per set of arguments) and tagged "catalog".
+ * Every admin write calls revalidateTag("catalog"), so changes show up immediately.
+ * Carts, wishlists and orders are never cached.
  */
-const getAllProductsCached = unstable_cache(
-  async (): Promise<Product[]> => {
-    try {
-      const items = await productRepository.listAll();
-      return items.length > 0 ? items : staticProducts;
-    } catch {
-      return staticProducts;
-    }
-  },
-  ["products:all"],
-  {
-    tags: [CATALOG_TAG],
-    revalidate: CATALOG_TTL_SECONDS,
+function cached<A extends unknown[], R>(key: string, fn: (...args: A) => Promise<R>) {
+  return unstable_cache(fn, [`catalog:${key}`], { tags: [CATALOG_TAG], revalidate: CATALOG_TTL_SECONDS });
+}
+
+const getCategoriesCached = cached("categories", () => categoryRepository.list());
+const getCountsCached = cached("counts", () => productRepository.countByCategory());
+const getProductCached = cached("product", (slug: string) => productRepository.getBySlug(slug));
+
+const searchCached = cached("search", async (query: ProductQuery): Promise<Paginated<Product>> => {
+  const where = buildProductWhere(query);
+
+  // Text searches with the default sort are ranked by relevance, which SQL can't
+  // order by, so PostgreSQL returns the matches and they are ranked in memory.
+  if (query.q && query.sort === "featured") {
+    const matches = await productRepository.findMany(where);
+    return queryProducts(matches, query);
   }
+
+  const total = await productRepository.count(where);
+  const { page, pageSize, totalPages, skip } = paginate(total, query.page, query.pageSize);
+  const items = await productRepository.findMany(where, { orderBy: PRODUCT_ORDER_BY[query.sort], skip, take: pageSize });
+  return { items, total, page, pageSize, totalPages };
+});
+
+const getRelatedCached = cached("related", async (product: Product, limit: number) => {
+  const candidates = await productRepository.findMany(
+    {
+      slug: { not: product.slug },
+      OR: [{ categorySlug: product.categorySlug }, ...(product.tags.length ? [{ tags: { hasSome: product.tags } }] : [])],
+    },
+    { take: 48 },
+  );
+  return findRelatedProducts(product, candidates, limit);
+});
+
+const getFeaturedCached = cached("featured", (limit: number) =>
+  productRepository.findMany({ featured: true }, { orderBy: [{ rating: "desc" }, { slug: "asc" }], take: limit }),
 );
 
-const getCategoriesCached = unstable_cache(
-  async (): Promise<Category[]> => {
-    try {
-      const items = await categoryRepository.list();
-      return items.length > 0 ? items : staticCategories;
-    } catch {
-      return staticCategories;
-    }
-  },
-  ["categories:all"],
-  {
-    tags: [CATALOG_TAG],
-    revalidate: CATALOG_TTL_SECONDS,
-  }
+const getDealsCached = cached("deals", async (limit: number) => {
+  const onSale = await productRepository.findMany({ compareAtPrice: { not: null }, stock: { gt: 0 } });
+  const discount = (p: Product) => (p.compareAtPrice! - p.price) / p.compareAtPrice!;
+  return onSale.sort((a, b) => discount(b) - discount(a)).slice(0, limit);
+});
+
+const getNewArrivalsCached = cached("new", (limit: number) =>
+  productRepository.findMany({}, { orderBy: PRODUCT_ORDER_BY.newest, take: limit }),
 );
 
 export const catalogService = {
@@ -55,65 +71,44 @@ export const catalogService = {
   },
 
   async getCategory(slug: string): Promise<Category> {
-    const categories = await getCategoriesCached();
-    const category = categories.find((c) => c.slug === slug);
+    const category = (await getCategoriesCached()).find((c) => c.slug === slug);
     if (!category) throw new NotFoundError("Category");
     return category;
   },
 
-  async getCategoryProductCounts(): Promise<Record<string, number>> {
-    const products = await getAllProductsCached();
-    return products.reduce<Record<string, number>>((acc, p) => {
-      acc[p.categorySlug] = (acc[p.categorySlug] ?? 0) + 1;
-      return acc;
-    }, {});
+  getCategoryProductCounts(): Promise<Record<string, number>> {
+    return getCountsCached();
   },
 
-  async searchProducts(query: ProductQuery): Promise<Paginated<Product>> {
-    const products = await getAllProductsCached();
-    return queryProducts(products, query);
+  searchProducts(query: ProductQuery): Promise<Paginated<Product>> {
+    return searchCached(query);
   },
 
   async getProduct(slug: string): Promise<Product> {
-    const products = await getAllProductsCached();
-    const product = products.find((p) => p.slug === slug) ?? (await productRepository.getBySlug(slug));
+    const product = await getProductCached(slug);
     if (!product) throw new NotFoundError("Product");
     return product;
   },
 
-  async getRelatedProducts(product: Product, limit = 4): Promise<Product[]> {
-    return findRelatedProducts(product, await getAllProductsCached(), limit);
+  getRelatedProducts(product: Product, limit = 4): Promise<Product[]> {
+    return getRelatedCached(product, limit);
   },
 
-  async getFeaturedProducts(limit = 8): Promise<Product[]> {
-    const products = await getAllProductsCached();
-    return products
-      .filter((p) => p.featured)
-      .sort((a, b) => b.rating - a.rating)
-      .slice(0, limit);
+  getFeaturedProducts(limit = 8): Promise<Product[]> {
+    return getFeaturedCached(limit);
   },
 
-  async getDeals(limit = 4): Promise<Product[]> {
-    const products = await getAllProductsCached();
-    return products
-      .filter((p) => p.compareAtPrice && p.compareAtPrice > p.price && p.stock > 0)
-      .sort((a, b) => (b.compareAtPrice! - b.price) / b.compareAtPrice! - (a.compareAtPrice! - a.price) / a.compareAtPrice!)
-      .slice(0, limit);
+  getDeals(limit = 4): Promise<Product[]> {
+    return getDealsCached(limit);
   },
 
-  async getNewArrivals(limit = 8): Promise<Product[]> {
-    const products = await getAllProductsCached();
-    return [...products].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
+  getNewArrivals(limit = 8): Promise<Product[]> {
+    return getNewArrivalsCached(limit);
   },
 
   /** Search-as-you-type suggestions for the header search box. */
   async suggest(q: string, limit = 6): Promise<Product[]> {
-    const result = queryProducts(await getAllProductsCached(), {
-      q,
-      sort: "featured",
-      page: 1,
-      pageSize: limit,
-    });
+    const result = await searchCached({ q, sort: "featured", page: 1, pageSize: limit });
     return result.items;
   },
 
@@ -122,9 +117,7 @@ export const catalogService = {
   async createProduct(input: ProductInput): Promise<Product> {
     const category = await categoryRepository.getBySlug(input.categorySlug);
     if (!category) throw new ValidationError("Unknown category.", { fieldErrors: { categorySlug: "Unknown category." } });
-    const now = new Date().toISOString();
-    const product: Product = { ...input, art: { ...input.art, icon: input.art.icon as ArtIcon }, createdAt: now, updatedAt: now };
-    await productRepository.create(product);
+    const product = await productRepository.create({ ...input, art: { ...input.art, icon: input.art.icon as ArtIcon } });
     revalidateTag(CATALOG_TAG);
     return product;
   },
@@ -137,14 +130,15 @@ export const catalogService = {
       ...existing,
       ...rest,
       compareAtPrice: compareAtPrice === null ? undefined : (compareAtPrice ?? existing.compareAtPrice),
-      updatedAt: new Date().toISOString(),
     };
     if (updated.compareAtPrice !== undefined && updated.compareAtPrice <= updated.price) {
-      throw new ValidationError("compareAtPrice must be greater than price.");
+      throw new ValidationError("The compare-at price must be higher than the price.", {
+        fieldErrors: { compareAtPrice: "Must be higher than the price." },
+      });
     }
-    await productRepository.replace(updated);
+    const saved = await productRepository.replace(updated);
     revalidateTag(CATALOG_TAG);
-    return updated;
+    return saved;
   },
 
   async deleteProduct(slug: string): Promise<void> {
