@@ -42,7 +42,7 @@ export function HeroVisual({ products }: { products: Product[] }) {
       <div className="absolute left-[20%] top-[12%] w-[58%]" style={layer(-14)}>
         <Link
           href={`/products/${main.slug}`}
-          className="block animate-float overflow-hidden rounded-[2rem] border-2 border-white/80 bg-white shadow-card-hover"
+          className="block animate-float overflow-hidden rounded-[2rem] border-2 border-white/80 bg-white shadow-card-hover dark:border-[#2C2924] dark:bg-[#1A1916]"
           style={{ transform: `perspective(900px) rotateY(${tilt.x * 8}deg) rotateX(${-tilt.y * 8}deg)` }}
         >
           <ProductArt art={main.art} name={main.name} priority sizes="(min-width:1024px) 320px, 60vw" />
@@ -62,7 +62,7 @@ export function HeroVisual({ products }: { products: Product[] }) {
         <div className="absolute left-0 top-0 w-[32%]" style={layer(22)}>
           <Link
             href={`/products/${second.slug}`}
-            className="block animate-float overflow-hidden rounded-3xl border-4 border-white bg-white shadow-card-hover [animation-delay:-2s]"
+            className="block animate-float overflow-hidden rounded-3xl border-4 border-white bg-white shadow-card-hover dark:border-[#2C2924] dark:bg-[#1A1916] [animation-delay:-2s]"
           >
             <ProductArt art={second.art} name={second.name} variant={1} sizes="200px" />
             <p className="truncate px-3 py-2 text-xs font-bold">{second.name}</p>
@@ -74,7 +74,7 @@ export function HeroVisual({ products }: { products: Product[] }) {
         <div className="absolute right-0 top-[26%] w-[33%]" style={layer(30)}>
           <Link
             href={`/products/${third.slug}`}
-            className="block animate-float overflow-hidden rounded-3xl border-4 border-white bg-white shadow-card-hover [animation-delay:-4s]"
+            className="block animate-float overflow-hidden rounded-3xl border-4 border-white bg-white shadow-card-hover dark:border-[#2C2924] dark:bg-[#1A1916] [animation-delay:-4s]"
           >
             <ProductArt art={third.art} name={third.name} variant={2} sizes="200px" />
             <p className="truncate px-3 py-2 text-xs font-bold">{third.name}</p>

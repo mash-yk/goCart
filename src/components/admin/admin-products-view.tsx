@@ -125,7 +125,7 @@ export function AdminProductsView({
             Product <span className="text-gradient">Management</span>
           </h1>
           <p className="mt-1 text-sm text-ink-500">
-            Create, update pricing and inventory, or remove products from the Lumora store.
+            Create, update pricing and inventory, or remove products from the goCart store.
           </p>
         </div>
         <Button onClick={handleOpenCreate} size="lg" className="gap-2 shadow-glow">
@@ -334,6 +334,8 @@ export function AdminProductsView({
 
       {/* Product Form Modal (Create or Edit) */}
       <ProductFormModal
+        // Remount for each product so the form starts from that product's values.
+        key={modalOpen ? (editingProduct?.slug ?? "new") : "closed"}
         isOpen={modalOpen}
         product={editingProduct}
         categories={categories}

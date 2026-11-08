@@ -49,7 +49,7 @@ export function ProductGallery({ product }: { product: Product }) {
         >
           <ProductArt art={product.art} name={product.name} image={photos[active]} variant={active} priority sizes="(min-width:1024px) 50vw, 100vw" />
         </div>
-        <span className="pointer-events-none absolute bottom-4 left-4 rounded-full bg-white/85 px-3 py-1 text-xs font-semibold backdrop-blur">
+        <span className="pointer-events-none absolute bottom-4 left-4 rounded-full bg-white/85 px-3 py-1 text-xs font-semibold text-[#181715] backdrop-blur">
           {active + 1} / {count}
         </span>
       </div>

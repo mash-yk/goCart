@@ -198,8 +198,8 @@ export function CartView({ initialCart }: { initialCart: Cart }) {
               </div>
               {cart.savings > 0 && (
                 <div className="flex justify-between text-[#D97706]">
-                  <dt>You save</dt>
-                  <dd className="font-semibold">−{formatPrice(cart.savings)}</dd>
+                  <dt>Sale savings (included)</dt>
+                  <dd className="font-semibold">{formatPrice(cart.savings)}</dd>
                 </div>
               )}
               <div className="flex justify-between">
