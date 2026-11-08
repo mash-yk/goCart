@@ -1,128 +1,59 @@
 import "server-only";
-import { GetCommand, TransactWriteCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { db, tableName } from "@/lib/db/client";
-import { isConditionalCheckFailed, isTransactionConditionFailed, withDb } from "@/lib/db/errors";
-import { keys } from "@/lib/db/keys";
-import { stripKeys } from "@/lib/db/utils";
+import { db } from "@/lib/db/client";
+import { isRecordNotFound, isUniqueViolation, withDb } from "@/lib/db/errors";
+import { toUser } from "@/lib/db/mappers";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import type { User } from "@/types";
 
-const inMemoryUsers = new Map<string, User>();
-const inMemoryEmailLookup = new Map<string, string>();
-
 export const userRepository = {
-  /**
-   * Creates the user profile and an email-lookup item in one transaction.
-   * The email item's condition makes email addresses unique.
-   */
-  async create(user: User): Promise<User> {
+  /** Creates a user. The unique index on email rejects duplicates, even under concurrent sign-ups. */
+  async create(user: Omit<User, "createdAt" | "updatedAt">): Promise<User> {
     try {
-      await db().send(
-        new TransactWriteCommand({
-          TransactItems: [
-            {
-              Put: {
-                TableName: tableName(),
-                Item: { ...keys.user(user.id), entityType: "User", ...user },
-                ConditionExpression: "attribute_not_exists(PK)",
-              },
-            },
-            {
-              Put: {
-                TableName: tableName(),
-                Item: { ...keys.email(user.email), entityType: "EmailLookup", userId: user.id },
-                ConditionExpression: "attribute_not_exists(PK)",
-              },
-            },
-          ],
-        }),
-      );
-      return user;
+      const row = await db().user.create({
+        data: { id: user.id, email: user.email, name: user.name, role: user.role, passwordHash: user.passwordHash },
+      });
+      return toUser(row);
     } catch (error) {
-      if (isTransactionConditionFailed(error)) {
+      if (isUniqueViolation(error)) {
         throw new ConflictError("EMAIL_TAKEN", "An account with this email already exists.");
       }
-      try {
-        return await withDb("user.create", () => Promise.reject(error));
-      } catch {
-        if (inMemoryEmailLookup.has(user.email)) {
-          throw new ConflictError("EMAIL_TAKEN", "An account with this email already exists.");
-        }
-        inMemoryUsers.set(user.id, user);
-        inMemoryEmailLookup.set(user.email, user.id);
-        return user;
-      }
+      return withDb("user.create", () => Promise.reject(error));
     }
   },
 
   async getById(id: string): Promise<User | null> {
-    try {
-      return await withDb("user.getById", async () => {
-        const res = await db().send(new GetCommand({ TableName: tableName(), Key: keys.user(id) }));
-        return res.Item ? stripKeys<User>(res.Item) : null;
-      });
-    } catch {
-      return inMemoryUsers.get(id) ?? null;
-    }
+    return withDb("user.getById", async () => {
+      const row = await db().user.findUnique({ where: { id } });
+      return row ? toUser(row) : null;
+    });
   },
 
   async getByEmail(email: string): Promise<User | null> {
-    try {
-      const lookup = await withDb("user.emailLookup", () =>
-        db().send(new GetCommand({ TableName: tableName(), Key: keys.email(email) })),
-      );
-      const userId = lookup.Item?.userId as string | undefined;
-      return userId ? this.getById(userId) : null;
-    } catch {
-      const userId = inMemoryEmailLookup.get(email);
-      return userId ? this.getById(userId) : null;
-    }
+    return withDb("user.getByEmail", async () => {
+      const row = await db().user.findUnique({ where: { email: email.toLowerCase() } });
+      return row ? toUser(row) : null;
+    });
   },
 
   async updateName(id: string, name: string): Promise<User> {
     try {
-      const res = await db().send(
-        new UpdateCommand({
-          TableName: tableName(),
-          Key: keys.user(id),
-          UpdateExpression: "SET #name = :name, updatedAt = :now",
-          ConditionExpression: "attribute_exists(PK)",
-          ExpressionAttributeNames: { "#name": "name" },
-          ExpressionAttributeValues: { ":name": name, ":now": new Date().toISOString() },
-          ReturnValues: "ALL_NEW",
-        }),
-      );
-      return stripKeys<User>(res.Attributes ?? {});
+      return toUser(await db().user.update({ where: { id }, data: { name } }));
     } catch (error) {
-      if (isConditionalCheckFailed(error)) throw new NotFoundError("User");
-      try {
-        return await withDb("user.updateName", () => Promise.reject(error));
-      } catch {
-        const existing = inMemoryUsers.get(id);
-        if (!existing) throw new NotFoundError("User");
-        const updated = { ...existing, name, updatedAt: new Date().toISOString() };
-        inMemoryUsers.set(id, updated);
-        return updated;
-      }
+      if (isRecordNotFound(error)) throw new NotFoundError("User");
+      return withDb("user.updateName", () => Promise.reject(error));
     }
   },
 
-  /** Deletes the profile and its email lookup together. */
-  async delete(user: Pick<User, "id" | "email">): Promise<void> {
+  /**
+   * Deletes the user. Their cart and wishlist go with them (ON DELETE CASCADE);
+   * their orders are kept for the shop's records with user_id set to NULL.
+   */
+  async delete(user: Pick<User, "id">): Promise<void> {
     try {
-      await withDb("user.delete", () =>
-        db().send(
-          new TransactWriteCommand({
-            TransactItems: [
-              { Delete: { TableName: tableName(), Key: keys.user(user.id) } },
-              { Delete: { TableName: tableName(), Key: keys.email(user.email) } },
-            ],
-          }),
-        ),
-      );
-    } catch {
-      inMemoryUsers.delete(user.id);
-      inMemoryEmailLookup.delete(user.email);
+      await db().user.delete({ where: { id: user.id } });
+    } catch (error) {
+      if (isRecordNotFound(error)) throw new NotFoundError("User");
+      return withDb("user.delete", () => Promise.reject(error));
     }
   },
 };

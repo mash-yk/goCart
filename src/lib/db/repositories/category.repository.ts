@@ -1,49 +1,52 @@
 import "server-only";
-import { DeleteCommand, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { db, tableName } from "@/lib/db/client";
-import { withDb } from "@/lib/db/errors";
-import { keys } from "@/lib/db/keys";
-import { stripKeys } from "@/lib/db/utils";
+import type { Prisma } from "@/generated/prisma/client";
+import { db } from "@/lib/db/client";
+import { isRecordNotFound, withDb } from "@/lib/db/errors";
+import { toCategory } from "@/lib/db/mappers";
+import { NotFoundError } from "@/lib/errors";
 import type { Category } from "@/types";
 
 export const categoryRepository = {
-  /** All categories live in one small partition, so a single Query returns them. */
   async list(): Promise<Category[]> {
     return withDb("category.list", async () => {
-      const res = await db().send(
-        new QueryCommand({
-          TableName: tableName(),
-          KeyConditionExpression: "PK = :pk",
-          ExpressionAttributeValues: { ":pk": keys.categoryPartition },
-        }),
-      );
-      return (res.Items ?? [])
-        .map((i) => stripKeys<Category>(i))
-        .sort((a, b) => a.sortOrder - b.sortOrder);
+      const rows = await db().category.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] });
+      return rows.map(toCategory);
     });
   },
 
   async getBySlug(slug: string): Promise<Category | null> {
     return withDb("category.get", async () => {
-      const res = await db().send(new GetCommand({ TableName: tableName(), Key: keys.category(slug) }));
-      return res.Item ? stripKeys<Category>(res.Item) : null;
+      const row = await db().category.findUnique({ where: { slug } });
+      return row ? toCategory(row) : null;
     });
   },
 
-  async put(category: Category): Promise<void> {
-    await withDb("category.put", () =>
-      db().send(
-        new PutCommand({
-          TableName: tableName(),
-          Item: { ...keys.category(category.slug), entityType: "Category", ...category },
-        }),
-      ),
-    );
+  /** Creates or updates a category (used by the seed script and admin tooling). */
+  async upsert(category: Omit<Category, "createdAt" | "updatedAt">): Promise<Category> {
+    return withDb("category.upsert", async () => {
+      const data = {
+        name: category.name,
+        tagline: category.tagline,
+        description: category.description,
+        art: category.art as unknown as Prisma.InputJsonValue,
+        sortOrder: category.sortOrder,
+      };
+      const row = await db().category.upsert({
+        where: { slug: category.slug },
+        create: { slug: category.slug, ...data },
+        update: data,
+      });
+      return toCategory(row);
+    });
   },
 
+  /** Fails if products still belong to the category (ON DELETE RESTRICT). */
   async delete(slug: string): Promise<void> {
-    await withDb("category.delete", () =>
-      db().send(new DeleteCommand({ TableName: tableName(), Key: keys.category(slug) })),
-    );
+    try {
+      await db().category.delete({ where: { slug } });
+    } catch (error) {
+      if (isRecordNotFound(error)) throw new NotFoundError("Category");
+      return withDb("category.delete", () => Promise.reject(error));
+    }
   },
 };

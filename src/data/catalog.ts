@@ -1,7 +1,7 @@
 import type { ArtIcon, Category, Product } from "@/types";
 
 /**
- * Seed catalogue for the store. Loaded into DynamoDB by `npm run db:seed`.
+ * Seed catalogue for the store. Loaded into PostgreSQL by `npm run db:seed` (prisma/seed.ts).
  * Prices are in cents.
  */
 

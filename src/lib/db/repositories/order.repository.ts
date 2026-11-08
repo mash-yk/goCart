@@ -1,160 +1,150 @@
 import "server-only";
-import { GetCommand, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { db, tableName } from "@/lib/db/client";
+import type { Prisma } from "@/generated/prisma/client";
+import { db } from "@/lib/db/client";
 import { withDb } from "@/lib/db/errors";
-import { keys } from "@/lib/db/keys";
-import { stripKeys } from "@/lib/db/utils";
-import { queryOwnerItems } from "@/lib/db/repositories/owner-items";
-import type { Order, OrderStatus, PaymentStatus } from "@/types";
+import { toOrder } from "@/lib/db/mappers";
+import { ownerWhere } from "@/lib/db/repositories/owner";
+import { AppError, ConflictError } from "@/lib/errors";
+import type { Order, Owner, PaymentStatus } from "@/types";
 
-// In-memory fallback for local development if DynamoDB is not yet connected
-const globalForOrders = globalThis as unknown as { __lumoraOrders?: Map<string, Order> };
-if (!globalForOrders.__lumoraOrders) {
-  globalForOrders.__lumoraOrders = new Map<string, Order>();
-}
+export type NewOrder = Omit<Order, "ownerId" | "status" | "stripeSessionId" | "createdAt" | "updatedAt">;
 
-function toItem(order: Order) {
-  return {
-    ...keys.order(order.id),
-    entityType: "Order",
-    ...order,
-  };
-}
+const withItems = { items: true } as const;
 
-function toOwnerItem(order: Order) {
-  return {
-    ...keys.ownerOrder(order.ownerId, order.id),
-    entityType: "OwnerOrder",
-    ...order,
-  };
+/** Runs a transaction, letting application errors (like OUT_OF_STOCK) through unchanged. */
+async function transaction<T>(operation: string, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  try {
+    return await db().$transaction(fn);
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    return withDb(operation, () => Promise.reject(error));
+  }
 }
 
 export const orderRepository = {
-  async create(order: Order): Promise<Order> {
-    globalForOrders.__lumoraOrders?.set(order.id, order);
+  /**
+   * Places an order in one transaction:
+   * 1. reserves stock for every line (fails with OUT_OF_STOCK if any product ran out),
+   * 2. saves the order and its line items,
+   * 3. optionally empties the owner's cart.
+   * If any step fails, nothing is written.
+   */
+  async create(owner: Owner, order: NewOrder, options: { clearCart: boolean }): Promise<Order> {
+    return transaction("order.create", async (tx) => {
+      for (const item of order.items) {
+        const reserved = await tx.product.updateMany({
+          where: { slug: item.slug, stock: { gte: item.quantity } },
+          data: { stock: { decrement: item.quantity } },
+        });
+        if (reserved.count === 0) {
+          throw new ConflictError("OUT_OF_STOCK", `Sorry, ${item.name} doesn't have enough stock left. Please update your cart.`);
+        }
+      }
 
-    try {
-      await withDb("order.create", async () => {
-        // Write the primary order record
-        await db().send(
-          new PutCommand({
-            TableName: tableName(),
-            Item: toItem(order),
-          }),
-        );
-        // Also index under owner for owner order queries
-        await db().send(
-          new PutCommand({
-            TableName: tableName(),
-            Item: toOwnerItem(order),
-          }),
-        );
+      const row = await tx.order.create({
+        data: {
+          id: order.id,
+          ...ownerWhere(owner),
+          customerName: order.customer.name,
+          customerEmail: order.customer.email,
+          customerPhone: order.customer.phone,
+          addressLine1: order.shippingAddress.addressLine1,
+          addressLine2: order.shippingAddress.addressLine2 || null,
+          city: order.shippingAddress.city,
+          state: order.shippingAddress.state,
+          postalCode: order.shippingAddress.postalCode,
+          country: order.shippingAddress.country,
+          itemCount: order.itemCount,
+          subtotal: order.subtotal,
+          shipping: order.shipping,
+          savings: order.savings,
+          total: order.total,
+          paymentMethod: order.paymentMethod,
+          paymentStatus: order.paymentStatus,
+          items: {
+            create: order.items.map((item) => ({
+              productSlug: item.slug,
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity,
+              lineTotal: item.lineTotal,
+              art: item.art as unknown as Prisma.InputJsonValue,
+            })),
+          },
+        },
+        include: withItems,
       });
-    } catch (error) {
-      console.warn("[orderRepository.create] DynamoDB write failed, stored in-memory for dev:", error);
-    }
 
-    return order;
+      if (options.clearCart) await tx.cartItem.deleteMany({ where: ownerWhere(owner) });
+      return toOrder(row);
+    });
   },
 
   async getById(id: string): Promise<Order | null> {
-    try {
-      const item = await withDb("order.getById", async () => {
-        const res = await db().send(
-          new GetCommand({
-            TableName: tableName(),
-            Key: keys.order(id),
-          }),
-        );
-        return res.Item ? stripKeys<Order>(res.Item) : null;
-      });
-      if (item) return item;
-    } catch {
-      // Fallback to in-memory store in dev
-    }
-
-    return globalForOrders.__lumoraOrders?.get(id) ?? null;
+    return withDb("order.get", async () => {
+      const row = await db().order.findUnique({ where: { id }, include: withItems });
+      return row ? toOrder(row) : null;
+    });
   },
 
-  async listByOwner(ownerId: string): Promise<Order[]> {
-    try {
-      const items = await queryOwnerItems(ownerId, keys.orderPrefix);
-      if (items.length > 0) {
-        return items.map((i) => stripKeys<Order>(i));
-      }
-    } catch {
-      // Fallback to in-memory store in dev
-    }
-
-    const inMemory: Order[] = [];
-    for (const ord of globalForOrders.__lumoraOrders?.values() ?? []) {
-      if (ord.ownerId === ownerId) {
-        inMemory.push(ord);
-      }
-    }
-    return inMemory.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  async listByOwner(owner: Owner): Promise<Order[]> {
+    return withDb("order.listByOwner", async () => {
+      const rows = await db().order.findMany({
+        where: ownerWhere(owner),
+        include: withItems,
+        orderBy: { createdAt: "desc" },
+      });
+      return rows.map(toOrder);
+    });
   },
 
-  async updateStatus(
-    id: string,
-    status: OrderStatus,
-    paymentStatus?: PaymentStatus,
-    stripeSessionId?: string,
-  ): Promise<Order | null> {
-    const existing = await this.getById(id);
-    if (!existing) return null;
+  /** Moves orders placed as a guest onto the account the guest just signed in to. */
+  async claimGuestOrders(guestId: string, userId: string): Promise<number> {
+    return withDb("order.claimGuestOrders", async () => {
+      const result = await db().order.updateMany({ where: { guestId }, data: { guestId: null, userId } });
+      return result.count;
+    });
+  },
 
-    const now = new Date().toISOString();
-    const updated: Order = {
-      ...existing,
-      status,
-      paymentStatus: paymentStatus ?? existing.paymentStatus,
-      stripeSessionId: stripeSessionId ?? existing.stripeSessionId,
-      updatedAt: now,
-    };
+  async setStripeSession(id: string, stripeSessionId: string): Promise<void> {
+    await withDb("order.setStripeSession", () => db().order.update({ where: { id }, data: { stripeSessionId } }));
+  },
 
-    globalForOrders.__lumoraOrders?.set(id, updated);
+  /**
+   * Marks a Stripe order as paid and empties the buyer's cart. Safe to call twice
+   * (the success page and the webhook may both report the same payment).
+   */
+  async markPaid(id: string, stripeSessionId: string): Promise<Order | null> {
+    return transaction("order.markPaid", async (tx) => {
+      const order = await tx.order.findUnique({ where: { id } });
+      if (!order) return null;
+      if (order.paymentStatus !== "paid") {
+        await tx.order.update({ where: { id }, data: { paymentStatus: "paid", stripeSessionId } });
+        const owner = order.userId ? { userId: order.userId } : order.guestId ? { guestId: order.guestId } : null;
+        if (owner) await tx.cartItem.deleteMany({ where: owner });
+      }
+      const row = await tx.order.findUniqueOrThrow({ where: { id }, include: withItems });
+      return toOrder(row);
+    });
+  },
 
-    try {
-      await withDb("order.updateStatus", async () => {
-        await db().send(
-          new UpdateCommand({
-            TableName: tableName(),
-            Key: keys.order(id),
-            UpdateExpression:
-              "SET #status = :s, paymentStatus = :ps, stripeSessionId = :sid, updatedAt = :u",
-            ExpressionAttributeNames: { "#status": "status" },
-            ExpressionAttributeValues: {
-              ":s": status,
-              ":ps": paymentStatus ?? existing.paymentStatus,
-              ":sid": stripeSessionId ?? existing.stripeSessionId ?? null,
-              ":u": now,
-            },
-          }),
-        );
+  /** Cancels an unpaid order and puts its reserved stock back. Does nothing if already paid or cancelled. */
+  async cancelUnpaid(id: string, paymentStatus: PaymentStatus = "failed"): Promise<Order | null> {
+    return transaction("order.cancelUnpaid", async (tx) => {
+      const order = await tx.order.findUnique({ where: { id }, include: withItems });
+      if (!order) return null;
+      if (order.status === "cancelled" || order.paymentStatus === "paid") return toOrder(order);
 
-        // Also update the owner reference
-        await db().send(
-          new UpdateCommand({
-            TableName: tableName(),
-            Key: keys.ownerOrder(existing.ownerId, id),
-            UpdateExpression:
-              "SET #status = :s, paymentStatus = :ps, stripeSessionId = :sid, updatedAt = :u",
-            ExpressionAttributeNames: { "#status": "status" },
-            ExpressionAttributeValues: {
-              ":s": status,
-              ":ps": paymentStatus ?? existing.paymentStatus,
-              ":sid": stripeSessionId ?? existing.stripeSessionId ?? null,
-              ":u": now,
-            },
-          }),
-        );
+      for (const item of order.items) {
+        if (!item.productSlug) continue; // product was deleted since
+        await tx.product.updateMany({ where: { slug: item.productSlug }, data: { stock: { increment: item.quantity } } });
+      }
+      const row = await tx.order.update({
+        where: { id },
+        data: { status: "cancelled", paymentStatus },
+        include: withItems,
       });
-    } catch (error) {
-      console.warn("[orderRepository.updateStatus] DynamoDB update failed, updated in-memory:", error);
-    }
-
-    return updated;
+      return toOrder(row);
+    });
   },
 };
-

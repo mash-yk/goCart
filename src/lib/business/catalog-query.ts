@@ -2,7 +2,8 @@ import type { Paginated, Product, ProductQuery, ProductSort } from "@/types";
 
 export const DEFAULT_PAGE_SIZE = 12;
 
-function normalise(text: string): string {
+/** Lower-cases text and strips accents and punctuation, so search ignores them. */
+export function normalise(text: string): string {
   return text
     .toLowerCase()
     .normalize("NFD")
@@ -12,12 +13,38 @@ function normalise(text: string): string {
     .trim();
 }
 
+/** Splits a search query into normalised words. */
+export function searchTerms(query: string | undefined): string[] {
+  return query ? normalise(query).split(" ").filter(Boolean) : [];
+}
+
+/**
+ * The text a product can be found by, stored in the products.search_text column.
+ * It holds exactly the fields that searchScore() looks at, so a database match
+ * always has a positive relevance score.
+ */
+export function buildSearchText(
+  product: Pick<Product, "name" | "tagline" | "tags" | "categorySlug" | "description">,
+): string {
+  return [product.name, product.tagline, product.tags.join(" "), product.categorySlug, product.description]
+    .map(normalise)
+    .join(" ");
+}
+
+/** Clamps a requested page into range and works out the row offset. */
+export function paginate(total: number, page: number, pageSize: number) {
+  const size = Math.max(1, pageSize);
+  const totalPages = Math.max(1, Math.ceil(total / size));
+  const current = Math.min(Math.max(1, page), totalPages);
+  return { page: current, pageSize: size, totalPages, skip: (current - 1) * size };
+}
+
 /**
  * Relevance score for a search term. Every word in the query must match
  * somewhere; matches in the name count more than matches in tags or description.
  */
 export function searchScore(product: Product, query: string): number {
-  const terms = normalise(query).split(" ").filter(Boolean);
+  const terms = searchTerms(query);
   if (terms.length === 0) return 1;
 
   const name = normalise(product.name);
@@ -47,7 +74,11 @@ const sorters: Record<ProductSort, (a: Product, b: Product) => number> = {
   name: (a, b) => a.name.localeCompare(b.name),
 };
 
-/** Applies search, filters, sorting and pagination to a product list. */
+/**
+ * Applies search, filters, sorting and pagination to a list of products in memory.
+ * The database does the filtering for listing pages; this is used to rank search
+ * results by relevance, which SQL ordering can't express.
+ */
 export function queryProducts(products: Product[], query: ProductQuery): Paginated<Product> {
   const scored: { product: Product; score: number }[] = [];
 
@@ -71,13 +102,10 @@ export function queryProducts(products: Product[], query: ProductQuery): Paginat
   });
 
   const total = scored.length;
-  const pageSize = Math.max(1, query.pageSize);
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const page = Math.min(Math.max(1, query.page), totalPages);
-  const start = (page - 1) * pageSize;
+  const { page, pageSize, totalPages, skip } = paginate(total, query.page, query.pageSize);
 
   return {
-    items: scored.slice(start, start + pageSize).map((s) => s.product),
+    items: scored.slice(skip, skip + pageSize).map((s) => s.product),
     total,
     page,
     pageSize,
