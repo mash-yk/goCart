@@ -1,254 +1,342 @@
-# Database design (AWS DynamoDB)
+# Database design (PostgreSQL + Prisma)
 
-Lumora stores everything in **one DynamoDB table** (`lumora-store` by default) using a
-single-table design. Every entity has a generic `PK` / `SK` key pair, and two global
-secondary indexes serve the catalog's list queries.
+goCart stores everything in **PostgreSQL**, accessed through **Prisma ORM 7** with the
+`pg` driver adapter. In production the database is hosted on **Neon** (serverless
+Postgres); locally any PostgreSQL 14+ works.
 
-- [Why a single table](#why-a-single-table)
-- [Table definition](#table-definition)
-- [Entities and keys](#entities-and-keys)
-- [Access patterns](#access-patterns)
+- [Schema at a glance](#schema-at-a-glance)
+- [Tables](#tables)
+- [Indexes and constraints](#indexes-and-constraints)
+- [How each feature uses the database](#how-each-feature-uses-the-database)
 - [CRUD operations by entity](#crud-operations-by-entity)
-- [Data integrity](#data-integrity)
-- [Guest data and TTL](#guest-data-and-ttl)
-- [Search and scaling](#search-and-scaling)
-- [Security and operations](#security-and-operations)
+- [Transactions and data integrity](#transactions-and-data-integrity)
+- [Search](#search)
+- [Guest data and cleanup](#guest-data-and-cleanup)
+- [Migrations and seeding](#migrations-and-seeding)
+- [Neon setup](#neon-setup)
+- [Performance and scaling](#performance-and-scaling)
 
-## Why a single table
+The schema lives in [`prisma/schema.prisma`](../prisma/schema.prisma) and the SQL that
+creates it in [`prisma/migrations`](../prisma/migrations).
 
-- **One request per screen.** A shopper's whole cart is one `Query` on one partition
-  (`OWNER#<id>`, `begins_with(SK, "CART#")`), not a join across tables.
-- **Predictable cost and speed.** Every access pattern is a key lookup or an index query.
-  Nothing scans the table.
-- **Simple operations.** One table to create, back up, monitor and grant IAM access to.
+## Schema at a glance
 
-## Table definition
+```mermaid
+erDiagram
+  categories ||--o{ products : contains
+  users ||--o{ cart_items : owns
+  users ||--o{ wishlist_items : owns
+  users |o--o{ orders : placed
+  products ||--o{ cart_items : "in cart"
+  products ||--o{ wishlist_items : "saved"
+  products |o--o{ order_items : "sold as"
+  orders ||--|{ order_items : contains
 
-| Setting      | Value                                                      |
-| ------------ | ---------------------------------------------------------- |
-| Primary key  | `PK` (string, partition) + `SK` (string, sort)             |
-| GSI1         | `GSI1PK` + `GSI1SK`, projection `ALL`: products by category |
-| GSI2         | `GSI2PK` + `GSI2SK`, projection `ALL`: all products, newest first |
-| Billing      | On-demand (`PAY_PER_REQUEST`)                              |
-| TTL          | Attribute `expiresAt` (epoch seconds), used for guest data |
-
-`npm run db:create` creates exactly this (see `scripts/create-table.ts`), waits for the
-table to become active and turns on TTL.
-
-## Entities and keys
-
-The key builders live in `src/lib/db/keys.ts`, so no other file builds key strings by hand.
-
-| Entity        | PK                | SK                       | GSI1PK            | GSI1SK           | GSI2PK     | GSI2SK               |
-| ------------- | ----------------- | ------------------------ | ----------------- | ---------------- | ---------- | -------------------- |
-| Category      | `CATEGORY`        | `CATEGORY#<slug>`        |                   |                  |            |                      |
-| Product       | `PRODUCT#<slug>`  | `PRODUCT`                | `CATEGORY#<slug>` | `PRODUCT#<slug>` | `PRODUCTS` | `<createdAt>#<slug>` |
-| User          | `USER#<id>`       | `PROFILE`                |                   |                  |            |                      |
-| Email lookup  | `EMAIL#<email>`   | `EMAIL`                  |                   |                  |            |                      |
-| Cart item     | `OWNER#<ownerId>` | `CART#<productSlug>`     |                   |                  |            |                      |
-| Wishlist item | `OWNER#<ownerId>` | `WISHLIST#<productSlug>` |                   |                  |            |                      |
-| Subscriber    | `NEWSLETTER`      | `EMAIL#<email>`          |                   |                  |            |                      |
-
-Every item also stores an `entityType` attribute (`Product`, `CartItem`, ...) to make the
-table easy to read in the AWS console.
-
-`ownerId` is either a user id or `guest-<uuid>` for shoppers who haven't signed in (see
-[Guest data and TTL](#guest-data-and-ttl)).
-
-### Example items
-
-```jsonc
-// Product
-{
-  "PK": "PRODUCT#pulse-pro-anc-headphones", "SK": "PRODUCT",
-  "GSI1PK": "CATEGORY#audio", "GSI1SK": "PRODUCT#pulse-pro-anc-headphones",
-  "GSI2PK": "PRODUCTS", "GSI2SK": "2026-10-30T00:00:00.000Z#pulse-pro-anc-headphones",
-  "entityType": "Product",
-  "slug": "pulse-pro-anc-headphones", "name": "Pulse Pro ANC Headphones",
-  "categorySlug": "audio", "price": 24900, "compareAtPrice": 29900,   // cents
-  "stock": 42, "rating": 4.8, "reviewCount": 1284, "featured": true,
-  "tags": ["wireless", "noise-cancelling"], "features": ["..."], "specs": [{ "label": "Battery", "value": "Up to 40 hours" }],
-  "colors": [{ "name": "Midnight", "hex": "#1e1b4b" }],
-  "art": { "icon": "headphones", "from": "#a855f7", "to": "#ec4899" }, "images": [],
-  "createdAt": "2026-10-30T00:00:00.000Z", "updatedAt": "2026-10-30T00:00:00.000Z"
-}
-
-// User profile + its email lookup item (written together in one transaction)
-{ "PK": "USER#2e7d6aea-...", "SK": "PROFILE", "entityType": "User", "id": "2e7d6aea-...",
-  "email": "ada@example.com", "name": "Ada Lovelace", "role": "customer",
-  "passwordHash": "$2b$10$...", "createdAt": "...", "updatedAt": "..." }
-{ "PK": "EMAIL#ada@example.com", "SK": "EMAIL", "entityType": "EmailLookup", "userId": "2e7d6aea-..." }
-
-// Cart item for a guest (expires automatically after 30 days)
-{ "PK": "OWNER#guest-0673c4f3-...", "SK": "CART#pulse-pro-anc-headphones", "entityType": "CartItem",
-  "productSlug": "pulse-pro-anc-headphones", "quantity": 2,
-  "addedAt": "...", "updatedAt": "...", "expiresAt": 1796800000 }
+  categories {
+    text slug PK
+    text name
+    jsonb art
+    int sort_order
+  }
+  products {
+    text slug PK
+    text category_slug FK
+    int price "cents"
+    int compare_at_price "cents, nullable"
+    int stock
+    float rating
+    text_array tags
+    jsonb specs
+    text search_text
+  }
+  users {
+    uuid id PK
+    text email UK
+    Role role
+    text password_hash
+  }
+  cart_items {
+    uuid id PK
+    uuid user_id FK "or"
+    text guest_id "one owner"
+    text product_slug FK
+    int quantity
+    timestamptz expires_at "guests only"
+  }
+  wishlist_items {
+    uuid id PK
+    uuid user_id FK "or"
+    text guest_id "one owner"
+    text product_slug FK
+  }
+  orders {
+    text id PK
+    uuid user_id FK "nullable"
+    text guest_id
+    int total "cents"
+    PaymentMethod payment_method
+    PaymentStatus payment_status
+    OrderStatus status
+    text stripe_session_id UK
+  }
+  order_items {
+    uuid id PK
+    text order_id FK
+    text product_slug FK "nullable"
+    text name "snapshot"
+    int price "snapshot, cents"
+    int quantity
+  }
+  newsletter_subscribers {
+    text email PK
+  }
 ```
 
-Money is always stored as **integer cents** to avoid floating-point rounding errors.
+Design choices:
 
-## Access patterns
+- **Normalised relational model.** Each concept has its own table, linked by foreign
+  keys, so the database itself prevents orphaned cart lines or orders for unknown products.
+- **Natural keys for the catalog.** Categories and products use their URL slug as the primary
+  key, so product URLs, cart lines and order lines all use the same identifier.
+- **Money as integer cents** (`INTEGER`), never floating point.
+- **One owner per cart/wishlist row.** A row belongs to a signed-in user (`user_id`) *or* an
+  anonymous guest (`guest_id`); a CHECK constraint enforces exactly one.
+- **Order lines are snapshots.** `order_items` copies the product name and price at purchase
+  time, so later price changes or deletions never change past orders.
+- **snake_case in SQL, camelCase in TypeScript**, mapped with `@map` / `@@map`.
 
-| #  | Access pattern                         | Operation                         | Key condition / index                                      | Code |
-| -- | -------------------------------------- | --------------------------------- | ---------------------------------------------------------- | ---- |
-| 1  | List categories (sorted)               | `Query`                           | `PK = CATEGORY`                                            | `categoryRepository.list` |
-| 2  | Get a category                         | `GetItem`                         | `PK = CATEGORY, SK = CATEGORY#<slug>`                      | `categoryRepository.getBySlug` |
-| 3  | List all products, newest first        | `Query` (paginated)               | GSI2: `GSI2PK = PRODUCTS`, `ScanIndexForward = false`      | `productRepository.listAll` |
-| 4  | List products in a category            | `Query`                           | GSI1: `GSI1PK = CATEGORY#<slug>`                           | `productRepository.listByCategory` |
-| 5  | Get a product                          | `GetItem`                         | `PK = PRODUCT#<slug>, SK = PRODUCT`                        | `productRepository.getBySlug` |
-| 6  | Get several products (cart, wishlist)  | `BatchGetItem` (retries unprocessed keys) | product keys                                       | `productRepository.getManyBySlugs` |
-| 7  | Get a user by id (session)             | `GetItem`                         | `PK = USER#<id>, SK = PROFILE`                             | `userRepository.getById` |
-| 8  | Get a user by email (sign-in)          | `GetItem` then `GetItem`          | `PK = EMAIL#<email>` → `USER#<id>`                         | `userRepository.getByEmail` |
-| 9  | Read a cart                            | `Query`                           | `PK = OWNER#<id> AND begins_with(SK, "CART#")`             | `cartRepository.list` |
-| 10 | Read a wishlist                        | `Query`                           | `PK = OWNER#<id> AND begins_with(SK, "WISHLIST#")`         | `wishlistRepository.list` |
-| 11 | Is a product in the cart?              | `GetItem`                         | `PK = OWNER#<id>, SK = CART#<slug>`                        | `cartRepository.get` |
-| 12 | Add a newsletter subscriber once       | `PutItem` with condition          | `PK = NEWSLETTER, SK = EMAIL#<email>`                      | `newsletterRepository.subscribe` |
+## Tables
 
-Search, filtering, sorting and pagination of the catalog run on the result of pattern 3,
-which is cached by Next.js for five minutes (see [Search and scaling](#search-and-scaling)).
+| Table | Purpose | Key columns |
+| ----- | ------- | ----------- |
+| `users` | Customer and admin accounts | `id` (UUID), `email` (unique), `role` (`customer`/`admin`), `password_hash` (bcrypt) |
+| `categories` | The six store collections | `slug` (PK), `name`, `tagline`, `description`, `art` (JSONB), `sort_order` |
+| `products` | The catalog | `slug` (PK), `category_slug` (FK), `price`, `compare_at_price`, `stock`, `rating`, `review_count`, `featured`, `tags[]`, `features[]`, `specs` (JSONB), `colors` (JSONB), `art` (JSONB), `images[]`, `search_text` |
+| `cart_items` | One row per product in a cart | `user_id` or `guest_id`, `product_slug` (FK), `quantity`, `expires_at` |
+| `wishlist_items` | One row per saved product | `user_id` or `guest_id`, `product_slug` (FK), `expires_at` |
+| `orders` | Placed orders | `id` (`ord_…`), `user_id`/`guest_id`, customer and shipping fields, `subtotal`/`shipping`/`savings`/`total`, `payment_method`, `payment_status`, `status`, `stripe_session_id` |
+| `order_items` | Lines of an order | `order_id` (FK), `product_slug` (FK, nullable), `name`, `price`, `quantity`, `line_total`, `art` |
+| `newsletter_subscribers` | Newsletter sign-ups | `email` (PK) |
+
+Enums: `Role` (`customer`, `admin`), `PaymentMethod` (`stripe`, `cod`), `PaymentStatus`
+(`pending_payment`, `pending_cod`, `paid`, `failed`), `OrderStatus` (`confirmed`,
+`processing`, `shipped`, `delivered`, `cancelled`).
+
+Every table has `created_at`; mutable tables also have `updated_at`, maintained by Prisma.
+
+## Indexes and constraints
+
+| Object | Kind | Why |
+| ------ | ---- | --- |
+| `users_email_key` | UNIQUE | One account per email, even with simultaneous sign-ups |
+| `products_category_slug_idx` | INDEX | Category pages and filters |
+| `products_created_at_idx` (DESC) | INDEX | "Newest" sort and new arrivals |
+| `products_featured_rating_idx` | INDEX | Default "Featured" sort and the bestsellers section |
+| `products_price_idx` | INDEX | Price filters and price sorting |
+| `cart_items_user_id_product_slug_key`, `cart_items_guest_id_product_slug_key` | UNIQUE | One line per product per cart; makes "add to cart" a single UPSERT |
+| `wishlist_items_*_product_slug_key` | UNIQUE | A product can't be saved twice |
+| `cart_items_expires_at_idx`, `wishlist_items_expires_at_idx` | INDEX | Fast cleanup of expired guest data |
+| `orders_user_id_created_at_idx`, `orders_guest_id_created_at_idx` | INDEX | Order history, newest first |
+| `orders_stripe_session_id_key` | UNIQUE | One order per Stripe Checkout session |
+| `products_price_check`, `products_stock_check`, `products_rating_check`, `products_review_count_check` | CHECK | No negative prices or stock; rating 0–5 |
+| `products_compare_at_price_check` | CHECK | A sale price must be lower than the original price |
+| `cart_items_quantity_check`, `order_items_quantity_check` | CHECK | Quantities are always positive |
+| `cart_items_one_owner_check`, `wishlist_items_one_owner_check` | CHECK | Exactly one of `user_id` / `guest_id` is set |
+| `orders_amounts_check`, `order_items_price_check` | CHECK | Order amounts are never negative |
+
+Foreign-key behaviour:
+
+| Relationship | ON DELETE | Effect |
+| ------------ | --------- | ------ |
+| `products.category_slug → categories` | RESTRICT | A category with products can't be deleted |
+| `cart_items / wishlist_items → users` | CASCADE | Deleting an account deletes its cart and wishlist |
+| `cart_items / wishlist_items → products` | CASCADE | Deleting a product removes it from every cart and wishlist |
+| `orders.user_id → users` | SET NULL | Orders are kept for the shop's records after an account is deleted |
+| `order_items.product_slug → products` | SET NULL | Past orders keep their snapshot when a product is deleted |
+| `order_items.order_id → orders` | CASCADE | Order lines belong to their order |
+
+All product foreign keys use `ON UPDATE CASCADE`, so renaming a slug would update every reference.
+
+## How each feature uses the database
+
+| Feature | Query | Code |
+| ------- | ----- | ---- |
+| Category list | `SELECT … FROM categories ORDER BY sort_order` | `categoryRepository.list` |
+| Product counts per category | `SELECT category_slug, COUNT(*) … GROUP BY category_slug` | `productRepository.countByCategory` |
+| Listing, filters, sort, pagination | `SELECT … WHERE <filters> ORDER BY <sort>, slug LIMIT n OFFSET m` + `COUNT(*)` | `catalogService.searchProducts`, `buildProductWhere` |
+| Text search (ranked) | `WHERE search_text LIKE '%word%' AND …`, then ranked by relevance in code | `catalogService.searchProducts` |
+| Product page | `SELECT … WHERE slug = $1` | `productRepository.getBySlug` |
+| Related products | same category OR overlapping tags (`tags && $1`), ranked in code | `catalogService.getRelatedProducts` |
+| Bestsellers / deals / new arrivals | `WHERE featured` / `WHERE compare_at_price IS NOT NULL AND stock > 0` / `ORDER BY created_at DESC` | `catalogService` |
+| Cart | `SELECT … FROM cart_items WHERE user_id = $1` + products by slug (`IN`) | `cartRepository.list`, `productRepository.getManyBySlugs` |
+| Add to cart / change quantity | `INSERT … ON CONFLICT (user_id, product_slug) DO UPDATE` (Prisma `upsert`) | `cartRepository.setQuantity` |
+| Wishlist add | `INSERT`, unique violation → "already in wishlist" | `wishlistRepository.add` |
+| Sign-in | `SELECT … FROM users WHERE email = $1` | `userRepository.getByEmail` |
+| Place order | Transaction (see below) | `orderRepository.create` |
+| Order history | `SELECT … FROM orders WHERE user_id = $1 ORDER BY created_at DESC` | `orderRepository.listByOwner` |
+| Health check | `SELECT 1` | `GET /api/health` |
+
+Read-heavy catalog queries are cached by Next.js for five minutes and tagged `catalog`;
+every admin write calls `revalidateTag("catalog")`, so changes appear immediately. Carts,
+wishlists, accounts and orders are never cached.
 
 ## CRUD operations by entity
 
-All database calls live in `src/lib/db/repositories/`. Services in `src/lib/services/`
-add the business rules, and the API routes in `src/app/api/` expose them over HTTP.
+All database access is in [`src/lib/db/repositories`](../src/lib/db/repositories).
+Services in `src/lib/services` apply the business rules, and API routes expose them.
 
 ### Products
 
-| Action  | DynamoDB call                                                            | API |
-| ------- | ------------------------------------------------------------------------ | --- |
-| Create  | `PutItem` with `attribute_not_exists(PK)` (fails with 409 if the slug exists) | `POST /api/products` (admin) |
-| Read    | `GetItem`, `Query` on GSI1 / GSI2, `BatchGetItem`                         | `GET /api/products`, `GET /api/products/:slug` |
-| Update  | `PutItem` with `attribute_exists(PK)`; GSI keys are rewritten so a category change moves the product | `PATCH /api/products/:slug` (admin) |
-| Delete  | `DeleteItem`                                                             | `DELETE /api/products/:slug` (admin) |
-
-After every write the service calls `revalidateTag("catalog")` so pages show the change
-straight away. Carts and wishlists that point at a deleted product are cleaned up the next
-time they are read.
+| Action | SQL (via Prisma) | API |
+| ------ | ---------------- | --- |
+| Create | `INSERT INTO products …` (duplicate slug → 409 `PRODUCT_EXISTS`) | `POST /api/products` (admin) |
+| Read | `SELECT` by slug, filtered lists, counts | `GET /api/products`, `GET /api/products/:slug` |
+| Update | `UPDATE products SET … WHERE slug = $1` (missing → 404); `search_text` is rebuilt | `PATCH /api/products/:slug` (admin) |
+| Delete | `DELETE FROM products WHERE slug = $1` (cascades to carts and wishlists) | `DELETE /api/products/:slug` (admin) |
 
 ### Categories
 
-| Action | DynamoDB call | Where |
-| ------ | ------------- | ----- |
-| Create / update | `PutItem` | `categoryRepository.put`, used by `npm run db:seed` |
-| Read   | `Query` / `GetItem` | `GET /api/categories`, category pages |
-| Delete | `DeleteItem` | `categoryRepository.delete` |
+| Action | SQL | Where |
+| ------ | --- | ----- |
+| Create / update | `INSERT … ON CONFLICT (slug) DO UPDATE` | `categoryRepository.upsert`, seed script |
+| Read | `SELECT … ORDER BY sort_order` | `GET /api/categories`, category pages |
+| Delete | `DELETE` (blocked while products exist) | `categoryRepository.delete` |
 
 ### Users
 
-| Action  | DynamoDB call                                                                         | API |
-| ------- | ------------------------------------------------------------------------------------- | --- |
-| Create  | `TransactWriteItems`: put `USER#<id>` + put `EMAIL#<email>`, both with `attribute_not_exists(PK)` | `POST /api/auth/signup` |
-| Read    | `GetItem` by id, or email lookup then `GetItem`                                        | `POST /api/auth/signin`, `GET /api/auth/me` |
-| Update  | `UpdateItem` (`SET #name = :name, updatedAt = :now`) with `attribute_exists(PK)`        | `PATCH /api/account` |
-| Delete  | `TransactWriteItems`: delete profile + delete email lookup; cart and wishlist are batch-deleted first | `DELETE /api/account` |
-
-Passwords are hashed with bcrypt (10 rounds) and never leave the server.
+| Action | SQL | API |
+| ------ | --- | --- |
+| Create | `INSERT INTO users …` (duplicate email → 409 `EMAIL_TAKEN`) | `POST /api/auth/signup` |
+| Read | `SELECT … WHERE email = $1` / `WHERE id = $1` | `POST /api/auth/signin`, `GET /api/auth/me` |
+| Update | `UPDATE users SET name = $1 WHERE id = $2` | `PATCH /api/account` |
+| Delete | `DELETE FROM users WHERE id = $1` (cascades cart and wishlist; orders keep `user_id = NULL`) | `DELETE /api/account` |
 
 ### Cart items
 
-| Action  | DynamoDB call | API |
-| ------- | ------------- | --- |
-| Add     | `GetItem` (current quantity) then `PutItem` with the new total, capped by stock and the 10-per-item limit | `POST /api/cart` |
-| Read    | `Query` + `BatchGetItem` for live prices and stock | `GET /api/cart` |
-| Update  | `PutItem` with the new quantity (0 deletes the line) | `PATCH /api/cart/:slug` |
-| Delete  | `DeleteItem` (one line) or `BatchWriteItem` delete requests (clear cart) | `DELETE /api/cart/:slug`, `DELETE /api/cart` |
+| Action | SQL | API |
+| ------ | --- | --- |
+| Add / update quantity | `INSERT … ON CONFLICT DO UPDATE SET quantity = $n` | `POST /api/cart`, `PATCH /api/cart/:slug` |
+| Read | `SELECT` lines + live product data | `GET /api/cart` |
+| Remove line | `DELETE … WHERE owner AND product_slug = $1` | `DELETE /api/cart/:slug` |
+| Clear | `DELETE … WHERE owner` | `DELETE /api/cart` |
 
-Cart items store only the product slug and quantity. Prices are always read from the
-product at display time, so customers never see a stale price.
+Cart rows store only the product and quantity; prices and stock are always read live from
+`products`, so customers never see a stale price.
 
 ### Wishlist items
 
-| Action | DynamoDB call | API |
-| ------ | ------------- | --- |
-| Add    | `PutItem` with `attribute_not_exists(SK)`, so the same product can't be saved twice (409 `ALREADY_IN_WISHLIST`) | `POST /api/wishlist` |
-| Read   | `Query` + `BatchGetItem` | `GET /api/wishlist` |
-| Delete | `DeleteItem` | `DELETE /api/wishlist/:slug` |
+| Action | SQL | API |
+| ------ | --- | --- |
+| Add | `INSERT` (unique violation → 409 `ALREADY_IN_WISHLIST`) | `POST /api/wishlist` |
+| Read | `SELECT` + products | `GET /api/wishlist` |
+| Remove | `DELETE … WHERE owner AND product_slug = $1` | `DELETE /api/wishlist/:slug` |
 
-## Data integrity
+### Orders
 
-- **Unique emails.** The email lookup item and the profile are written in one transaction
-  with `attribute_not_exists` conditions. Two sign-ups racing for the same email cannot
-  both succeed; the loser gets `409 EMAIL_TAKEN`.
-- **No duplicate wishlist entries.** Enforced by the database with a condition expression,
-  not just by the UI.
-- **Stock and quantity limits.** Checked in `cart.service.ts` on every add and update;
-  quantities above the current stock are reduced when the cart is read.
-- **Validation before writes.** Every request body is parsed with a zod schema
-  (`src/lib/validation/schemas.ts`) before it reaches a repository.
-- **Error mapping.** `withDb()` in `src/lib/db/errors.ts` logs the AWS error and turns it
-  into a `503 DATABASE_UNAVAILABLE` response, so internal details never reach the client.
+| Action | SQL | API |
+| ------ | --- | --- |
+| Create | Transaction: reserve stock, insert order + lines, empty cart | `POST /api/checkout` |
+| Read | `SELECT … JOIN order_items` (only the buyer or an admin) | `GET /api/orders/:id`, success page, account page |
+| Update | `UPDATE orders SET payment_status = 'paid'` / `status = 'cancelled'` | Stripe webhook, `POST /api/checkout/verify` |
 
-## Guest data and TTL
+### Newsletter
 
-Shoppers can use the cart and wishlist before signing up. Middleware gives each visitor
-an anonymous `lumora_gid` cookie, and their items are stored under
-`OWNER#guest-<uuid>` with an `expiresAt` timestamp 30 days ahead (refreshed on every
-change). DynamoDB's TTL deletes abandoned guest data automatically at no cost.
+`INSERT INTO newsletter_subscribers (email)`; a repeat sign-up hits the primary key and is
+reported as "already subscribed" (`POST /api/newsletter`).
 
-When a guest signs in or signs up, their cart and wishlist are merged into the account
-(quantities are added together up to the allowed limit) and the guest items are deleted.
+## Transactions and data integrity
 
-## Search and scaling
+**Placing an order** (`orderRepository.create`) runs in one transaction:
 
-The catalog is small and read-heavy, so the product list (one GSI2 query) is cached with
-Next.js `unstable_cache` for five minutes, and search, filters, sorting and pagination run
-in memory on that cached list (`src/lib/business/catalog-query.ts`). This keeps search
-instant without a second service to run.
-
-DynamoDB is not a full-text search engine. If the catalog grows past a few thousand
-products, the recommended path is:
-
-1. Stream table changes with **DynamoDB Streams** to **Amazon OpenSearch Service**
-   (the managed zero-ETL integration does this without custom code).
-2. Point `catalogService.searchProducts` at OpenSearch. The rest of the app does not change,
-   because pages and API routes only call the service.
-
-Other scaling notes:
-
-- The `PRODUCTS` partition on GSI2 is a single partition key. At very large catalog sizes,
-  shard it (for example `PRODUCTS#0` to `PRODUCTS#9`) and query the shards in parallel.
-- On-demand billing scales automatically. Switch to provisioned capacity with auto scaling
-  once traffic is predictable, to lower cost.
-
-## Security and operations
-
-**IAM.** The app only needs these actions on the table and its indexes. Create an IAM user
-(or role) with this policy, replacing the region, account id and table name:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "LumoraAppAccess",
-      "Effect": "Allow",
-      "Action": [
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:UpdateItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:Query",
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:ConditionCheckItem",
-        "dynamodb:DescribeTable"
-      ],
-      "Resource": [
-        "arn:aws:dynamodb:ap-south-1:123456789012:table/lumora-store",
-        "arn:aws:dynamodb:ap-south-1:123456789012:table/lumora-store/index/*"
-      ]
-    }
-  ]
-}
+```sql
+BEGIN;
+  -- for each line: reserve stock only if enough is left
+  UPDATE products SET stock = stock - $qty WHERE slug = $slug AND stock >= $qty;  -- 0 rows → OUT_OF_STOCK, ROLLBACK
+  INSERT INTO orders (…) VALUES (…);
+  INSERT INTO order_items (…) VALUES (…), (…);
+  DELETE FROM cart_items WHERE user_id = $owner;   -- cash on delivery only
+COMMIT;
 ```
 
-`TransactWriteItems` is authorised through the item-level actions above (`PutItem`,
-`DeleteItem`, `ConditionCheckItem`). Running `npm run db:create` additionally needs
-`dynamodb:CreateTable` and `dynamodb:UpdateTimeToLive`; do that once with an admin profile
-rather than giving those rights to the app.
+The conditional `UPDATE … WHERE stock >= $qty` is atomic in PostgreSQL, so two shoppers
+checking out the last unit at the same moment can't both succeed. This is covered by an
+integration test that races three checkouts for one unit.
 
-**Backups.** Turn on point-in-time recovery for the table in production
-(`aws dynamodb update-continuous-backups --table-name lumora-store --point-in-time-recovery-specification PointInTimeRecoveryEnabled=true`).
+**Card payments (Stripe)** reserve stock when the order is created. The order is marked paid
+only after the server confirms it with Stripe (signed webhook or a direct API check). If the
+checkout session expires, or the buyer cancels, `orderRepository.cancelUnpaid` puts the stock
+back in another transaction, at most once.
 
-**Health check.** `GET /api/health` calls `DescribeTable` and returns `200` when the table
-is reachable, or `503` otherwise. Point your uptime monitor at it.
+**Other guarantees**
+
+- Unique email, one cart line per product, no duplicate wishlist entries: unique indexes.
+- Prices, stock, quantities and order amounts can't go negative: CHECK constraints.
+- Every request body is validated with zod before it reaches the database.
+- Database errors are logged on the server and returned as a generic `503`
+  (`withDb()` in `src/lib/db/errors.ts`); connection details never reach the browser.
+
+## Search
+
+Each product has a `search_text` column: its name, tagline, tags, category and description,
+lower-cased with accents and punctuation removed (`buildSearchText()`). It is rebuilt on
+every create and update.
+
+- **Filtering happens in PostgreSQL.** Every word typed must appear in `search_text`
+  (`search_text LIKE '%word%'`), combined with the other filters.
+- **Ranking happens in code.** With the default sort, matches are ordered by relevance
+  (name matches beat tag matches, which beat description matches). SQL `ORDER BY` can't
+  express this, so `queryProducts()` ranks the matching rows.
+
+For a much larger catalog, add a trigram index (`CREATE EXTENSION pg_trgm;
+CREATE INDEX … USING gin (search_text gin_trgm_ops)`) or switch to PostgreSQL full-text
+search (`tsvector` + `ts_rank`); the rest of the app wouldn't change.
+
+## Guest data and cleanup
+
+Shoppers can use the cart and wishlist before signing up. Middleware gives each visitor an
+anonymous `gocart_gid` cookie, and their rows are stored with `guest_id = 'guest-<uuid>'`
+and `expires_at` 30 days ahead (pushed back on every change).
+
+On sign-in or sign-up, the guest cart is merged into the account (quantities added together,
+up to the limit), the wishlist is merged, and guest orders are moved to the account.
+
+A daily Vercel Cron job calls `GET /api/cron/cleanup` (protected by `CRON_SECRET`), which
+deletes guest rows whose `expires_at` has passed.
+
+## Migrations and seeding
+
+| Command | What it does |
+| ------- | ------------ |
+| `npm run db:migrate` | Development: create a new migration from `schema.prisma` changes and apply it |
+| `npm run db:deploy` | Apply pending migrations (`prisma migrate deploy`); used in production |
+| `npm run db:seed` | Load the 6 categories and 36 products (`prisma/seed.ts`, safe to re-run) |
+| `npm run db:setup` | `db:deploy` + `db:seed`, for a fresh database |
+| `npm run db:reset` | Drop everything and re-apply all migrations (development only) |
+| `npm run db:studio` | Browse and edit data in Prisma Studio |
+
+On Vercel, `vercel.json` runs `npm run vercel-build` = `prisma migrate deploy && next build`,
+so every deployment applies new migrations before the new code goes live.
+
+CI applies the migrations to a fresh PostgreSQL 16 service, checks that they match
+`schema.prisma` (`prisma migrate diff --exit-code`), seeds, and runs the integration tests.
+
+## Neon setup
+
+1. Sign up at [neon.tech](https://neon.tech) (free plan, no card needed) and create a project.
+   Pick the region closest to your users and to your Vercel functions (`vercel.json` uses
+   Singapore, `sin1`, so choose **AWS Asia Pacific (Singapore)**).
+2. On the project dashboard, click **Connect**. Copy two connection strings:
+   - **Pooled** (host contains `-pooler`) → `DATABASE_URL`. The app uses this; the pooler lets
+     many serverless functions share a small number of database connections.
+   - **Direct** (turn "Connection pooling" off) → `DIRECT_URL`. Migrations use this.
+3. Put both in `.env.local`, then run `npm run db:setup`.
+
+## Performance and scaling
+
+- Serverless-friendly connections: the pooled Neon URL plus a small per-function pool
+  (`max: 5` in production).
+- Every list query is index-backed and paginated with `LIMIT/OFFSET` plus a stable tie-breaker.
+- Cart and wishlist reads are two indexed queries regardless of size.
+- Catalog reads are cached for five minutes and invalidated on admin writes.
+- Next steps at larger scale: keyset pagination for deep pages, a trigram or full-text index for
+  search, and Neon read replicas for read-heavy traffic.
