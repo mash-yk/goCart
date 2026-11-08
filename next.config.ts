@@ -10,8 +10,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  // The AWS SDK and bcrypt run only on the server; keep them out of the client bundle.
-  serverExternalPackages: ["@aws-sdk/client-dynamodb", "@aws-sdk/lib-dynamodb", "bcryptjs"],
+  // Server-only packages that Next.js should load from node_modules instead of bundling.
+  serverExternalPackages: ["@prisma/client", "@prisma/adapter-pg", "pg", "bcryptjs"],
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },

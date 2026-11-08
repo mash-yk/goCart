@@ -15,8 +15,8 @@ next-env.d.ts
 .env.local
 .env.*.local
 
-# local DynamoDB data
-/.dynamodb/
+# generated Prisma client (rebuilt by `prisma generate` on install)
+/src/generated/
 
 # misc
 .DS_Store

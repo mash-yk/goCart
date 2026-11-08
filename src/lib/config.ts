@@ -7,30 +7,26 @@ import { z } from "zod";
  */
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  LUMORA_AWS_REGION: z.string().min(1).default("ap-south-1"),
-  LUMORA_AWS_ACCESS_KEY_ID: z.string().optional(),
-  LUMORA_AWS_SECRET_ACCESS_KEY: z.string().optional(),
-  DYNAMODB_TABLE: z.string().min(1).default("lumora-store"),
-  DYNAMODB_ENDPOINT: z.string().url().optional().or(z.literal("")),
+  DATABASE_URL: z.string().optional(),
   AUTH_SECRET: z.string().optional(),
   ADMIN_EMAILS: z.string().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  CRON_SECRET: z.string().optional(),
 });
 
 export type AppConfig = {
   env: "development" | "test" | "production";
-  aws: {
-    region: string;
-    endpoint?: string;
-    credentials?: { accessKeyId: string; secretAccessKey: string };
-  };
-  tableName: string;
+  databaseUrl: string;
   authSecret: Uint8Array;
   adminEmails: string[];
+  stripe: { secretKey?: string; webhookSecret?: string };
+  cronSecret?: string;
 };
 
 let cached: AppConfig | null = null;
 
-const DEV_ONLY_SECRET = "lumora-dev-only-secret-change-me-0123456789";
+const DEV_ONLY_SECRET = "gocart-dev-only-secret-change-me-0123456789";
 
 export function getConfig(): AppConfig {
   if (cached) return cached;
@@ -42,35 +38,29 @@ export function getConfig(): AppConfig {
   const env = parsed.data;
 
   const isProd = env.NODE_ENV === "production";
-  // `next build` runs with NODE_ENV=production, so only enforce the secret at request time.
+  // `next build` runs with NODE_ENV=production, so only enforce runtime settings at request time.
   const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+
+  if (!env.DATABASE_URL && !isBuildPhase) {
+    throw new Error("DATABASE_URL is not set. Add your PostgreSQL connection string to .env.local (see README).");
+  }
   if (isProd && !isBuildPhase && (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32)) {
     throw new Error("AUTH_SECRET must be set to at least 32 characters in production.");
   }
 
-  const hasStaticKeys = Boolean(env.LUMORA_AWS_ACCESS_KEY_ID && env.LUMORA_AWS_SECRET_ACCESS_KEY);
-
   cached = {
     env: env.NODE_ENV,
-    aws: {
-      region: env.LUMORA_AWS_REGION,
-      endpoint: env.DYNAMODB_ENDPOINT || undefined,
-      credentials: hasStaticKeys
-        ? {
-            accessKeyId: env.LUMORA_AWS_ACCESS_KEY_ID as string,
-            secretAccessKey: env.LUMORA_AWS_SECRET_ACCESS_KEY as string,
-          }
-        : env.DYNAMODB_ENDPOINT
-          ? // DynamoDB Local accepts any credentials.
-            { accessKeyId: "local", secretAccessKey: "local" }
-          : undefined,
-    },
-    tableName: env.DYNAMODB_TABLE,
+    databaseUrl: env.DATABASE_URL ?? "",
     authSecret: new TextEncoder().encode(env.AUTH_SECRET || DEV_ONLY_SECRET),
     adminEmails: (env.ADMIN_EMAILS ?? "")
       .split(",")
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean),
+    stripe: {
+      secretKey: env.STRIPE_SECRET_KEY || undefined,
+      webhookSecret: env.STRIPE_WEBHOOK_SECRET || undefined,
+    },
+    cronSecret: env.CRON_SECRET || undefined,
   };
   return cached;
 }

@@ -1,0 +1,214 @@
+// goCart database schema (PostgreSQL).
+// Design notes, relationships and every query the app runs: docs/DATABASE.md
+//
+// Conventions:
+// - Tables and columns use snake_case in the database (@@map / @map) and camelCase in TypeScript.
+// - Money is stored as integer cents (Int) to avoid floating-point rounding.
+// - Categories and products use their URL slug as the primary key, so URLs, cart lines
+//   and order lines all refer to the same stable identifier.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  customer
+  admin
+}
+
+enum PaymentMethod {
+  stripe
+  cod
+}
+
+enum PaymentStatus {
+  pending_payment
+  pending_cod
+  paid
+  failed
+}
+
+enum OrderStatus {
+  confirmed
+  processing
+  shipped
+  delivered
+  cancelled
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  name         String
+  role         Role     @default(customer)
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  cartItems     CartItem[]
+  wishlistItems WishlistItem[]
+  orders        Order[]
+
+  @@map("users")
+}
+
+model Category {
+  slug        String   @id
+  name        String
+  tagline     String
+  description String
+  /// Generated artwork: { icon, from, to }
+  art         Json
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  slug           String   @id
+  name           String
+  tagline        String
+  description    String
+  categorySlug   String   @map("category_slug")
+  /// Price in cents.
+  price          Int
+  /// Original price in cents when the product is on sale.
+  compareAtPrice Int?     @map("compare_at_price")
+  rating         Float    @default(0)
+  reviewCount    Int      @default(0) @map("review_count")
+  stock          Int      @default(0)
+  featured       Boolean  @default(false)
+  tags           String[]
+  features       String[]
+  /// [{ label, value }]
+  specs          Json     @default("[]")
+  /// [{ name, hex }]
+  colors         Json     @default("[]")
+  /// Generated artwork: { icon, from, to }
+  art            Json
+  images         String[]
+  /// Normalised name, tagline, tags, category and description, used by search.
+  searchText     String   @default("") @map("search_text")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  category      Category       @relation(fields: [categorySlug], references: [slug], onUpdate: Cascade, onDelete: Restrict)
+  cartItems     CartItem[]
+  wishlistItems WishlistItem[]
+  orderItems    OrderItem[]
+
+  @@index([categorySlug])
+  @@index([createdAt(sort: Desc)])
+  @@index([featured, rating(sort: Desc)])
+  @@index([price])
+  @@map("products")
+}
+
+/// A cart line belongs to exactly one owner: a signed-in user or an anonymous guest.
+model CartItem {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String?   @map("user_id") @db.Uuid
+  guestId     String?   @map("guest_id")
+  productSlug String    @map("product_slug")
+  quantity    Int
+  /// Guest lines are deleted by the daily cleanup job after this time.
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user    User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productSlug], references: [slug], onUpdate: Cascade, onDelete: Cascade)
+
+  @@unique([userId, productSlug])
+  @@unique([guestId, productSlug])
+  @@index([expiresAt])
+  @@map("cart_items")
+}
+
+model WishlistItem {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String?   @map("user_id") @db.Uuid
+  guestId     String?   @map("guest_id")
+  productSlug String    @map("product_slug")
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user    User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productSlug], references: [slug], onUpdate: Cascade, onDelete: Cascade)
+
+  @@unique([userId, productSlug])
+  @@unique([guestId, productSlug])
+  @@index([expiresAt])
+  @@map("wishlist_items")
+}
+
+model Order {
+  id              String        @id
+  userId          String?       @map("user_id") @db.Uuid
+  guestId         String?       @map("guest_id")
+  customerName    String        @map("customer_name")
+  customerEmail   String        @map("customer_email")
+  customerPhone   String        @map("customer_phone")
+  addressLine1    String        @map("address_line1")
+  addressLine2    String?       @map("address_line2")
+  city            String
+  state           String
+  postalCode      String        @map("postal_code")
+  country         String
+  itemCount       Int           @map("item_count")
+  /// Amounts in cents.
+  subtotal        Int
+  shipping        Int
+  savings         Int
+  total           Int
+  paymentMethod   PaymentMethod @map("payment_method")
+  paymentStatus   PaymentStatus @map("payment_status")
+  status          OrderStatus   @default(confirmed)
+  stripeSessionId String?       @unique @map("stripe_session_id")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user  User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items OrderItem[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([guestId, createdAt(sort: Desc)])
+  @@map("orders")
+}
+
+/// A snapshot of a product at the time of purchase, so orders stay correct
+/// even if the product's price or name changes later, or it is deleted.
+model OrderItem {
+  id          String  @id @default(uuid()) @db.Uuid
+  orderId     String  @map("order_id")
+  productSlug String? @map("product_slug")
+  name        String
+  /// Unit price in cents at the time of purchase.
+  price       Int
+  quantity    Int
+  lineTotal   Int     @map("line_total")
+  art         Json?
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productSlug], references: [slug], onUpdate: Cascade, onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productSlug])
+  @@map("order_items")
+}
+
+model NewsletterSubscriber {
+  email     String   @id
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("newsletter_subscribers")
+}
