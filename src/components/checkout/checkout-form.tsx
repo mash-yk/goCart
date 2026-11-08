@@ -35,7 +35,7 @@ interface FormFields {
   paymentMethod: PaymentMethod;
 }
 
-export function CheckoutForm({ cart }: { cart: Cart }) {
+export function CheckoutForm({ cart, cardPaymentsEnabled }: { cart: Cart; cardPaymentsEnabled: boolean }) {
   const router = useRouter();
   const { user, setCartCount } = useStore();
 
@@ -48,8 +48,8 @@ export function CheckoutForm({ cart }: { cart: Cart }) {
     city: "",
     state: "",
     postalCode: "",
-    country: "US",
-    paymentMethod: "stripe",
+    country: "",
+    paymentMethod: cardPaymentsEnabled ? "stripe" : "cod",
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof FormFields, string>>>({});
@@ -86,6 +86,9 @@ export function CheckoutForm({ cart }: { cart: Cart }) {
     if (!form.postalCode.trim()) {
       newErrors.postalCode = "Postal / ZIP code is required.";
     }
+    if (form.country.trim().length < 2) {
+      newErrors.country = "Country is required.";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -119,7 +122,7 @@ export function CheckoutForm({ cart }: { cart: Cart }) {
             city: form.city.trim(),
             state: form.state.trim(),
             postalCode: form.postalCode.trim(),
-            country: form.country.trim() || "US",
+            country: form.country.trim(),
           },
         },
       });
@@ -242,6 +245,15 @@ export function CheckoutForm({ cart }: { cart: Cart }) {
                   required
                 />
               </div>
+              <Input
+                label="Country"
+                value={form.country}
+                onChange={(e) => updateField("country", e.target.value)}
+                error={errors.country}
+                placeholder="Bangladesh"
+                autoComplete="country-name"
+                required
+              />
             </div>
           </section>
 
@@ -259,10 +271,13 @@ export function CheckoutForm({ cart }: { cart: Cart }) {
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               {/* Stripe Card Option */}
-              <div
+              <button
+                type="button"
                 onClick={() => updateField("paymentMethod", "stripe")}
+                disabled={!cardPaymentsEnabled}
+                aria-pressed={form.paymentMethod === "stripe"}
                 className={cn(
-                  "cursor-pointer rounded-2xl border-2 p-5 transition-all",
+                  "cursor-pointer rounded-2xl border-2 p-5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60",
                   form.paymentMethod === "stripe"
                     ? "border-[#FDC841] bg-[#FEF9EC] shadow-sm ring-2 ring-[#FDC841]/30"
                     : "border-ink-200 bg-white hover:border-ink-300",
@@ -290,15 +305,19 @@ export function CheckoutForm({ cart }: { cart: Cart }) {
                   </div>
                 </div>
                 <p className="mt-3 text-xs text-ink-600 leading-relaxed">
-                  Fast, encrypted checkout supporting Visa, Mastercard, Amex, Apple Pay & Google Pay.
+                  {cardPaymentsEnabled
+                    ? "Fast, encrypted checkout supporting Visa, Mastercard, Amex, Apple Pay & Google Pay."
+                    : "Card payments aren't enabled on this store yet. Choose cash on delivery."}
                 </p>
-              </div>
+              </button>
 
               {/* Cash On Delivery Option */}
-              <div
+              <button
+                type="button"
                 onClick={() => updateField("paymentMethod", "cod")}
+                aria-pressed={form.paymentMethod === "cod"}
                 className={cn(
-                  "cursor-pointer rounded-2xl border-2 p-5 transition-all",
+                  "cursor-pointer rounded-2xl border-2 p-5 text-left transition-all",
                   form.paymentMethod === "cod"
                     ? "border-emerald-600 bg-emerald-50/60 shadow-sm ring-2 ring-emerald-600/20"
                     : "border-ink-200 bg-white hover:border-ink-300",
@@ -328,7 +347,7 @@ export function CheckoutForm({ cart }: { cart: Cart }) {
                 <p className="mt-3 text-xs text-ink-600 leading-relaxed">
                   Pay with physical cash or card directly to the courier when your parcel arrives.
                 </p>
-              </div>
+              </button>
             </div>
 
             <div className="mt-6 flex items-center gap-2 rounded-xl bg-ink-50 p-3 text-xs text-ink-500">
@@ -372,8 +391,8 @@ export function CheckoutForm({ cart }: { cart: Cart }) {
                 </div>
                 {cart.savings > 0 && (
                   <div className="flex justify-between text-fuchsia-700">
-                    <dt>Savings</dt>
-                    <dd className="font-semibold">−{formatPrice(cart.savings)}</dd>
+                    <dt>Sale savings (included)</dt>
+                    <dd className="font-semibold">{formatPrice(cart.savings)}</dd>
                   </div>
                 )}
                 <div className="flex justify-between">

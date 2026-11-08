@@ -1,6 +1,7 @@
 import "server-only";
 import bcrypt from "bcryptjs";
 import { getConfig } from "@/lib/config";
+import { orderRepository } from "@/lib/db/repositories/order.repository";
 import { userRepository } from "@/lib/db/repositories/user.repository";
 import { endSession, getGuestOwner, startSession, toPublicUser } from "@/lib/auth/session";
 import { cartService } from "@/lib/services/cart.service";
@@ -19,7 +20,11 @@ async function carryOverGuestData(user: User): Promise<void> {
   if (!guest) return;
   const owner = { id: user.id, kind: "user" as const };
   try {
-    await Promise.all([cartService.mergeGuestCart(guest, owner), wishlistService.mergeGuestWishlist(guest, owner)]);
+    await Promise.all([
+      cartService.mergeGuestCart(guest, owner),
+      wishlistService.mergeGuestWishlist(guest, owner),
+      orderRepository.claimGuestOrders(guest.id, user.id),
+    ]);
   } catch (error) {
     // Merging is a convenience; signing in should still succeed if it fails.
     console.error("[auth] failed to merge guest cart/wishlist", error);

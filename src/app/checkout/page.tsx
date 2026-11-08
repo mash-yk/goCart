@@ -5,16 +5,27 @@ import { CheckoutForm } from "@/components/checkout/checkout-form";
 import { buttonClasses } from "@/components/ui/button";
 import { getOwner } from "@/lib/auth/session";
 import { cartService } from "@/lib/services/cart.service";
+import { orderService } from "@/lib/services/order.service";
+import { isStripeConfigured } from "@/lib/stripe";
 
 export const metadata: Metadata = {
-  title: "Checkout | Lumora",
+  title: "Checkout",
   robots: { index: false },
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function CheckoutPage() {
+export default async function CheckoutPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cancelled?: string; order_id?: string }>;
+}) {
   const owner = await getOwner();
+  const { cancelled, order_id } = await searchParams;
+  if (cancelled && order_id && owner) {
+    // The buyer left Stripe Checkout without paying: release the stock reserved for that order.
+    await orderService.cancelAbandonedCheckout(order_id, owner).catch(() => undefined);
+  }
   const cart = owner ? await cartService.getCart(owner) : null;
 
   if (!cart || cart.lines.length === 0) {
@@ -45,7 +56,7 @@ export default async function CheckoutPage() {
         <p className="mt-1 text-sm text-ink-500">Complete your shipping and payment details below.</p>
       </div>
 
-      <CheckoutForm cart={cart} />
+      <CheckoutForm cart={cart} cardPaymentsEnabled={isStripeConfigured()} />
     </div>
   );
 }

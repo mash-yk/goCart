@@ -177,8 +177,8 @@ export function CheckoutSuccessView({
             </div>
             {order.savings > 0 && (
               <div className="flex justify-between text-[#D97706]">
-                <dt>Discount Savings</dt>
-                <dd className="font-semibold">−{formatPrice(order.savings)}</dd>
+                <dt>Sale savings (included)</dt>
+                <dd className="font-semibold">{formatPrice(order.savings)}</dd>
               </div>
             )}
             <div className="flex justify-between">

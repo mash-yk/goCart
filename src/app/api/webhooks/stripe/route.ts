@@ -1,49 +1,49 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getStripe } from "@/lib/stripe";
-import { orderService } from "@/lib/services/order.service";
-import { cartService } from "@/lib/services/cart.service";
 import type Stripe from "stripe";
+import { getConfig } from "@/lib/config";
+import { orderService } from "@/lib/services/order.service";
+import { getStripe } from "@/lib/stripe";
 
+export const dynamic = "force-dynamic";
+
+/**
+ * Stripe webhook. Every event's signature is verified with STRIPE_WEBHOOK_SECRET,
+ * so nobody can fake a "payment completed" message.
+ */
 export async function POST(request: NextRequest) {
   const stripe = getStripe();
-  if (!stripe) {
-    return NextResponse.json({ error: "Stripe not configured" }, { status: 400 });
+  const { webhookSecret } = getConfig().stripe;
+  if (!stripe || !webhookSecret) {
+    return NextResponse.json({ error: "Stripe webhooks are not configured." }, { status: 503 });
   }
 
   const signature = request.headers.get("stripe-signature");
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!signature) return NextResponse.json({ error: "Missing Stripe signature." }, { status: 400 });
 
-  const rawBody = await request.text();
   let event: Stripe.Event;
-
   try {
-    if (webhookSecret && signature) {
-      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-    } else {
-      event = JSON.parse(rawBody) as Stripe.Event;
-    }
-  } catch (err) {
-    console.error("[stripe.webhook] Invalid signature or payload:", err);
-    return NextResponse.json({ error: "Webhook signature verification failed" }, { status: 400 });
+    event = stripe.webhooks.constructEvent(await request.text(), signature, webhookSecret);
+  } catch (error) {
+    console.error("[stripe.webhook] signature verification failed", error);
+    return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
   }
 
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const orderId = session.client_reference_id || session.metadata?.orderId;
-    const ownerId = session.metadata?.ownerId;
+  const session = event.data.object as Stripe.Checkout.Session;
+  const orderId = session.client_reference_id ?? session.metadata?.orderId;
 
-    if (orderId) {
-      try {
-        await orderService.verifyAndCompleteStripeOrder(orderId, session.id);
-        if (ownerId) {
-          await cartService.clear({ id: ownerId, kind: ownerId.startsWith("guest-") ? "guest" : "user" });
-        }
-      } catch (err) {
-        console.error("[stripe.webhook] Failed to finalize order:", err);
-      }
+  try {
+    if (orderId && event.type === "checkout.session.completed") {
+      await orderService.handleStripeSessionCompleted(orderId, session.id, session.payment_status === "paid");
+    } else if (orderId && event.type === "checkout.session.async_payment_succeeded") {
+      await orderService.handleStripeSessionCompleted(orderId, session.id, true);
+    } else if (orderId && event.type === "checkout.session.expired") {
+      await orderService.handleStripeSessionExpired(orderId);
     }
+  } catch (error) {
+    console.error(`[stripe.webhook] failed to handle ${event.type}`, error);
+    // A 500 makes Stripe retry the event later.
+    return NextResponse.json({ error: "Failed to process event." }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });
 }
-

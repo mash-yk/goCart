@@ -3,10 +3,12 @@ import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import { CheckoutSuccessView } from "@/components/checkout/checkout-success-view";
 import { buttonClasses } from "@/components/ui/button";
+import { getOwner } from "@/lib/auth/session";
 import { orderService } from "@/lib/services/order.service";
+import type { Order } from "@/types";
 
 export const metadata: Metadata = {
-  title: "Order Confirmed | Lumora",
+  title: "Order confirmed",
   robots: { index: false },
 };
 
@@ -42,9 +44,10 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
     );
   }
 
-  let order;
+  let order: Order;
   try {
-    order = await orderService.getOrder(order_id);
+    // Only the person who placed the order (or an admin) can see it.
+    order = await orderService.getOrderFor(order_id, await getOwner());
   } catch {
     return (
       <div className="container max-w-lg py-16 text-center">
@@ -62,6 +65,11 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
         </div>
       </div>
     );
+  }
+
+  if (session_id) {
+    // Back from Stripe: confirm the payment with Stripe's API before showing it as paid.
+    order = await orderService.confirmStripePayment(order, session_id).catch(() => order);
   }
 
   return (

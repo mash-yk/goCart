@@ -163,7 +163,7 @@ export const checkoutSchema = z.object({
     city: z.string().trim().min(2, "City is required.").max(60),
     state: z.string().trim().min(2, "State or province is required.").max(60),
     postalCode: z.string().trim().min(2, "Postal code is required.").max(20),
-    country: z.string().trim().min(2, "Country is required.").max(60).default("US"),
+    country: z.string().trim().min(2, "Country is required.").max(60),
   }),
 });
 
