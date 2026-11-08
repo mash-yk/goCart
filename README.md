@@ -10,7 +10,7 @@ manage the catalog from an admin console.
 
 ## Contents
 
-- [Demo video](#demo-video)
+- [Live deployment & demo](#live-deployment--demo)
 - [Features](#features)
 - [Tech stack](#tech-stack)
 - [Screenshots](#screenshots)
@@ -26,9 +26,11 @@ manage the catalog from an admin console.
 - [Security](#security)
 - [Known limitations and next steps](#known-limitations-and-next-steps)
 
-## Demo video
+## Live deployment & demo
 
-▶ **Demo video:** _add the link here after uploading `gocart-demo.mp4` (YouTube, Google Drive, etc.)_
+- 🌐 **Live application:** [https://go-cart-2026.vercel.app](https://go-cart-2026.vercel.app)
+- ▶️ **Demo video:** [Watch Walkthrough (Google Drive)](https://drive.google.com/file/d/1XazngZ8I56wvy4EC-VPjMXnUOSkydkuH/view?usp=sharing)
+- 📦 **GitHub repository:** [https://github.com/mash-yk/goCart](https://github.com/mash-yk/goCart)
 
 The 3½-minute walkthrough covers browsing, filters, search, the product page, cart,
 checkout validation, a cash-on-delivery order, sign-up with guest-cart merge, order history,
@@ -276,7 +278,7 @@ Requirements: **Node.js 20.9+** (22 recommended, see `.nvmrc`), npm, and a Postg
 (Neon or local).
 
 ```bash
-git clone https://github.com/<your-username>/gocart.git
+git clone https://github.com/mash-yk/goCart.git
 cd gocart
 npm install                     # also generates the Prisma client
 cp .env.example .env.local      # then fill in DATABASE_URL (and DIRECT_URL on Neon)
