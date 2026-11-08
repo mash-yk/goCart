@@ -1,16 +1,16 @@
-import { DescribeTableCommand } from "@aws-sdk/client-dynamodb";
-import { db, tableName } from "@/lib/db/client";
 import { json, route } from "@/lib/api/handler";
+import { maintenanceRepository } from "@/lib/db/repositories/maintenance.repository";
 
 export const dynamic = "force-dynamic";
 
-/** Health check used by uptime monitors: reports whether the DynamoDB table is reachable. */
+/** Health check for uptime monitors: reports whether PostgreSQL is reachable. */
 export const GET = route(async () => {
+  const started = Date.now();
   try {
-    const res = await db().send(new DescribeTableCommand({ TableName: tableName() }));
-    return json({ status: "ok", database: res.Table?.TableStatus ?? "UNKNOWN" });
+    await maintenanceRepository.ping();
+    return json({ status: "ok", database: "connected", latencyMs: Date.now() - started });
   } catch (error) {
-    const name = (error as { name?: string }).name ?? "Error";
-    return json({ status: "degraded", database: "UNREACHABLE", reason: name }, { status: 503 });
+    console.error("[health] database check failed", error);
+    return json({ status: "degraded", database: "unreachable" }, { status: 503 });
   }
 });

@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { Heart, ShoppingBag, Sparkles } from "lucide-react";
 import { AccountPanel } from "@/components/account/account-panel";
 import { AuthForms } from "@/components/account/auth-forms";
+import { OrderHistory } from "@/components/account/order-history";
 import { getCurrentUser, getOwner } from "@/lib/auth/session";
 import { cartService } from "@/lib/services/cart.service";
+import { orderService } from "@/lib/services/order.service";
 import { wishlistService } from "@/lib/services/wishlist.service";
 
 export const metadata: Metadata = { title: "Your account", robots: { index: false } };
@@ -20,13 +22,18 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
 
   if (user) {
     const owner = await getOwner();
-    const [cartCount, wishlist] = await Promise.all([cartService.getItemCount(owner), wishlistService.getProductSlugs(owner)]);
+    const [cartCount, wishlist, orders] = await Promise.all([
+      cartService.getItemCount(owner),
+      wishlistService.getProductSlugs(owner),
+      owner ? orderService.listOwnerOrders(owner) : [],
+    ]);
     return (
       <div className="container py-8 sm:py-12">
         <h1 className="mb-8 text-4xl font-black tracking-tight sm:text-5xl">
           Hey, <span className="text-gradient">{user.name.split(" ")[0]}</span> 👋
         </h1>
         <AccountPanel user={user} cartCount={cartCount} wishlistCount={wishlist.length} />
+        <OrderHistory orders={orders} />
       </div>
     );
   }
@@ -37,7 +44,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
       <div className="container relative grid items-center gap-12 py-12 sm:py-20 lg:grid-cols-2">
         <div className="max-w-lg">
           <h1 className="text-4xl font-black leading-tight tracking-tight sm:text-6xl">
-            Your <span className="text-gradient">Lumora</span> account.
+            Your <span className="text-gradient">goCart</span> account.
           </h1>
           <p className="mt-4 text-lg text-ink-500">Sign in to keep your cart and wishlist synced across every device.</p>
           <ul className="mt-8 space-y-4">
